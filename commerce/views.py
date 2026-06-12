@@ -1,0 +1,370 @@
+import json
+from datetime import datetime, timedelta
+from functools import wraps
+
+from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+from django.db import transaction
+from django.db.models import F, Q, Sum
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils import timezone
+from django.views.decorators.http import require_POST
+
+from .forms import LoginForm, ProductForm, UserForm
+from .models import Product, Return, Sale, SaleItem, User
+
+
+def staff_required(view_func):
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect(f"{reverse('login')}?next={request.path}")
+        if request.user.role not in (User.ROLE_JEFE, User.ROLE_ADMIN):
+            return render(request, "403.html", status=403)
+        return view_func(request, *args, **kwargs)
+
+    return wrapper
+
+
+def home(request):
+    if not request.user.is_authenticated:
+        return redirect("login")
+    return redirect("dashboard" if request.user.is_staff_member else "pos_index")
+
+
+def login_view(request):
+    if request.user.is_authenticated:
+        return redirect("home")
+
+    form = LoginForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        identification = form.cleaned_data["identification"].strip()
+        password = form.cleaned_data["password"]
+        user = authenticate(request, username=identification, password=password)
+        if user and user.is_active:
+            login(request, user)
+            messages.success(request, f"Bienvenido, {user.full_name}.")
+            return redirect(request.GET.get("next") or "home")
+        messages.error(request, "Identificacion o contrasena incorrecta.")
+
+    return render(request, "auth/login.html", {"form": form})
+
+
+def logout_view(request):
+    logout(request)
+    messages.info(request, "Sesion cerrada correctamente.")
+    return redirect("login")
+
+
+@staff_required
+def dashboard(request):
+    today = timezone.localdate()
+    start = timezone.make_aware(datetime.combine(today, datetime.min.time()))
+    end = timezone.make_aware(datetime.combine(today, datetime.max.time()))
+
+    sales_today = Sale.objects.filter(created_at__range=(start, end), is_returned=False)
+    total_today = sum(sale.total for sale in sales_today)
+    invoices_today = sales_today.count()
+    items_today = SaleItem.objects.filter(sale__in=sales_today).aggregate(total=Sum("quantity"))["total"] or 0
+
+    low_stock = Product.objects.filter(is_active=True, stock__gt=0, stock__lte=F("min_stock"))
+    out_stock = Product.objects.filter(is_active=True, stock=0)
+
+    return render(
+        request,
+        "dashboard/index.html",
+        {
+            "total_today": total_today,
+            "invoices_today": invoices_today,
+            "items_today": items_today,
+            "total_products": Product.objects.filter(is_active=True).count(),
+            "low_stock_count": low_stock.count(),
+            "out_of_stock_count": out_stock.count(),
+            "alert_products": list(low_stock) + list(out_stock),
+        },
+    )
+
+def _next_product_code():
+    used = set()
+    for code in Product.objects.filter(code__startswith="PROD-").values_list("code", flat=True):
+        try:
+            used.add(int(code.split("-")[1]))
+        except (IndexError, ValueError):
+            continue
+    number = 1
+    while number in used:
+        number += 1
+    return f"PROD-{number:03d}"
+
+
+@staff_required
+def inventory_index(request):
+    q = request.GET.get("q", "").strip()
+    products = Product.objects.filter(is_active=True)
+    if q:
+        products = products.filter(Q(name__icontains=q) | Q(code__icontains=q))
+    return render(request, "inventory/index.html", {"products": products, "q": q})
+
+
+@staff_required
+def inventory_new(request):
+    initial = {"code": _next_product_code(), "stock": 0, "min_stock": 5}
+    form = ProductForm(request.POST or None, initial=initial)
+    if request.method == "POST" and form.is_valid():
+        code = form.cleaned_data["code"].upper().strip()
+        inactive = Product.objects.filter(code=code, is_active=False).first()
+        if inactive:
+            for field, value in form.cleaned_data.items():
+                setattr(inactive, field, value)
+            inactive.code = code
+            inactive.is_active = True
+            inactive.save()
+            messages.success(request, f'Producto "{inactive.name}" restaurado exitosamente.')
+            return redirect("inventory_index")
+        if Product.objects.filter(code=code, is_active=True).exists():
+            messages.error(request, "Ya existe un producto con ese codigo.")
+        else:
+            product = form.save(commit=False)
+            product.code = code
+            product.save()
+            messages.success(request, f'Producto "{product.name}" registrado exitosamente.')
+            return redirect("inventory_index")
+    return render(request, "inventory/form.html", {"form": form, "product": None, "action": "Nuevo"})
+
+
+@staff_required
+def inventory_edit(request, product_id):
+    product = get_object_or_404(Product, pk=product_id)
+    form = ProductForm(request.POST or None, instance=product)
+    form.fields["code"].disabled = True
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Producto actualizado.")
+        return redirect("inventory_index")
+    return render(request, "inventory/form.html", {"form": form, "product": product, "action": "Editar"})
+
+
+@require_POST
+@staff_required
+def inventory_delete(request, product_id):
+    product = get_object_or_404(Product, pk=product_id)
+    product.is_active = False
+    product.save(update_fields=["is_active"])
+    messages.warning(request, f'Producto "{product.name}" eliminado.')
+    return redirect("inventory_index")
+
+
+@login_required
+def product_search(request):
+    q = request.GET.get("q", "").strip()
+    products = Product.objects.filter(is_active=True, stock__gt=0)
+    if q:
+        products = products.filter(Q(name__icontains=q) | Q(code__icontains=q))
+    data = [
+        {"id": p.id, "code": p.code, "name": p.name, "sell_price": p.sell_price, "stock": p.stock}
+        for p in products[:10]
+    ]
+    return JsonResponse(data, safe=False)
+
+
+@login_required
+def pos_index(request):
+    products = Product.objects.filter(is_active=True, stock__gt=0).order_by("name")
+    top_ids = (
+        SaleItem.objects.values("product_id")
+        .annotate(total_sold=Sum("quantity"))
+        .order_by("-total_sold")[:5]
+    )
+    top_products = Product.objects.filter(
+        id__in=[row["product_id"] for row in top_ids], is_active=True, stock__gt=0
+    )
+    return render(request, "pos/index.html", {"products": products, "top_products": top_products})
+
+
+def _next_invoice():
+    last = Sale.objects.order_by("-id").first()
+    number = (last.id + 1) if last else 1
+    return f"FAC-{number:06d}"
+
+
+@require_POST
+@login_required
+@transaction.atomic
+def pos_complete(request):
+    data = json.loads(request.body.decode("utf-8"))
+    customer_id = data.get("customer_id", "").strip()
+    customer_name = data.get("customer_name", "").strip()
+    items = data.get("items", [])
+
+    if not customer_id or not customer_name:
+        return JsonResponse({"ok": False, "msg": "Datos del cliente incompletos."}, status=400)
+    if not items:
+        return JsonResponse({"ok": False, "msg": "El carrito esta vacio."}, status=400)
+
+    validated = []
+    total = 0
+    for item in items:
+        product = Product.objects.select_for_update().get(pk=item["product_id"])
+        quantity = int(item["quantity"])
+        if product.stock < quantity:
+            return JsonResponse({"ok": False, "msg": f"Stock insuficiente para {product.name}."}, status=400)
+        subtotal = product.sell_price * quantity
+        total += subtotal
+        validated.append((product, quantity, product.sell_price, subtotal))
+
+    sale = Sale.objects.create(
+        invoice_number=_next_invoice(),
+        customer_id=customer_id,
+        customer_name=customer_name,
+        customer_phone=data.get("customer_phone", "").strip(),
+        customer_email=data.get("customer_email", "").strip(),
+        total=total,
+        cashier=request.user,
+    )
+    for product, quantity, unit_price, subtotal in validated:
+        SaleItem.objects.create(
+            sale=sale,
+            product=product,
+            quantity=quantity,
+            unit_price=unit_price,
+            subtotal=subtotal,
+        )
+        product.stock -= quantity
+        product.save(update_fields=["stock"])
+
+    return JsonResponse({"ok": True, "sale_id": sale.id, "invoice": sale.invoice_number})
+
+
+@login_required
+def pos_ticket(request, sale_id):
+    sale = get_object_or_404(Sale, pk=sale_id)
+    return render(request, "pos/ticket.html", {"sale": sale})
+
+
+@staff_required
+def sales_index(request):
+    filter_type = request.GET.get("filter", "today")
+    date_from = request.GET.get("from", "")
+    date_to = request.GET.get("to", "")
+    today = timezone.localdate()
+    sales = Sale.objects.all()
+
+    if filter_type == "today":
+        start_date = end_date = today
+    elif filter_type == "yesterday":
+        start_date = end_date = today - timedelta(days=1)
+    elif filter_type == "range" and date_from and date_to:
+        start_date = datetime.strptime(date_from, "%Y-%m-%d").date()
+        end_date = datetime.strptime(date_to, "%Y-%m-%d").date()
+    else:
+        start_date = end_date = None
+
+    if start_date and end_date:
+        start = timezone.make_aware(datetime.combine(start_date, datetime.min.time()))
+        end = timezone.make_aware(datetime.combine(end_date, datetime.max.time()))
+        sales = sales.filter(created_at__range=(start, end))
+
+    sales = list(sales.select_related("cashier").prefetch_related("items"))
+    active_sales = [sale for sale in sales if not sale.is_returned]
+    return render(
+        request,
+        "sales/index.html",
+        {
+            "sales": sales,
+            "total_amount": sum(sale.total for sale in active_sales),
+            "total_invoices": len(active_sales),
+            "total_items": sum(sum(item.quantity for item in sale.items.all()) for sale in active_sales),
+            "total_returns": len([sale for sale in sales if sale.is_returned]),
+            "filter_type": filter_type,
+            "date_from": date_from,
+            "date_to": date_to,
+        },
+    )
+
+
+@staff_required
+def sales_detail(request, sale_id):
+    sale = get_object_or_404(Sale.objects.select_related("cashier").prefetch_related("items__product"), pk=sale_id)
+    return render(request, "sales/detail.html", {"sale": sale})
+
+
+@require_POST
+@staff_required
+@transaction.atomic
+def sale_return(request, sale_id):
+    sale = get_object_or_404(Sale.objects.select_for_update().prefetch_related("items__product"), pk=sale_id)
+    if sale.is_returned:
+        messages.warning(request, "Esta venta ya fue devuelta.")
+        return redirect("sales_detail", sale_id=sale.id)
+
+    for item in sale.items.all():
+        item.product.stock += item.quantity
+        item.product.save(update_fields=["stock"])
+    sale.is_returned = True
+    sale.save(update_fields=["is_returned"])
+    Return.objects.create(
+        sale=sale,
+        reason=request.POST.get("reason", "").strip(),
+        processed_by=request.user,
+    )
+    messages.success(request, f"Devolucion de la factura {sale.invoice_number} procesada.")
+    return redirect("sales_detail", sale_id=sale.id)
+
+
+def _allowed_roles_for(role):
+    if role == User.ROLE_JEFE:
+        return [User.ROLE_JEFE, User.ROLE_ADMIN, User.ROLE_CAJERO]
+    return [User.ROLE_CAJERO]
+
+
+@staff_required
+def users_index(request):
+    users = User.objects.filter(is_active=True).order_by("full_name")
+    return render(request, "users/index.html", {"users": users})
+
+
+@staff_required
+def users_new(request):
+    allowed = _allowed_roles_for(request.user.role)
+    form = UserForm(request.POST or None, allowed_roles=allowed)
+    if request.method == "POST" and form.is_valid():
+        if form.cleaned_data["role"] not in allowed:
+            messages.error(request, "No tienes permiso para crear usuarios con ese rol.")
+        else:
+            user = form.save()
+            messages.success(request, f'Usuario "{user.full_name}" creado exitosamente.')
+            return redirect("users_index")
+    return render(request, "users/form.html", {"form": form, "user_obj": None, "action": "Nuevo", "allowed_roles": allowed})
+
+
+@staff_required
+def users_edit(request, user_id):
+    user_obj = get_object_or_404(User, pk=user_id)
+    if request.user.role == User.ROLE_ADMIN and user_obj.role != User.ROLE_CAJERO:
+        messages.error(request, "No tienes permiso para editar este usuario.")
+        return redirect("users_index")
+    allowed = _allowed_roles_for(request.user.role)
+    form = UserForm(request.POST or None, instance=user_obj, allowed_roles=allowed)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Usuario actualizado.")
+        return redirect("users_index")
+    return render(request, "users/form.html", {"form": form, "user_obj": user_obj, "action": "Editar", "allowed_roles": allowed})
+
+
+@require_POST
+@staff_required
+def users_delete(request, user_id):
+    user_obj = get_object_or_404(User, pk=user_id)
+    if user_obj.id == request.user.id:
+        messages.error(request, "No puedes eliminar tu propia cuenta.")
+    elif request.user.role == User.ROLE_ADMIN and user_obj.role != User.ROLE_CAJERO:
+        messages.error(request, "No tienes permiso para eliminar este usuario.")
+    else:
+        user_obj.is_active = False
+        user_obj.save(update_fields=["is_active"])
+        messages.warning(request, f'Usuario "{user_obj.full_name}" eliminado.')
+    return redirect("users_index")

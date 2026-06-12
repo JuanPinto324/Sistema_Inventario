@@ -1,113 +1,58 @@
-# 🛒 PyCommerceX
+# PyCommerceX
 
-Sistema de Gestión de Inventario y Punto de Venta  
-**Universidad de La Guajira — Ingeniería de Software II**
+Sistema local de inventario y punto de venta construido con Django para el proyecto final de Programacion Avanzada.
 
----
+## Problema que resuelve
 
-## 🚀 Instalación Local (Paso a Paso)
+Pequenos negocios necesitan controlar productos, stock, ventas, cajeros y devoluciones sin depender de hojas de calculo ni servicios externos. PyCommerceX permite operar una caja local, registrar facturas y mantener alertas de inventario bajo.
 
-### 1. Requisitos
-- Python 3.10 o superior
-- Git
+## Funcionalidades
 
-### 2. Clonar y configurar
+- Autenticacion de usuarios con roles: jefe, administrador y cajero.
+- Panel principal con ventas del dia, articulos vendidos y alertas de stock.
+- CRUD de productos con codigo, costo, precio de venta, stock y stock minimo.
+- Punto de venta con carrito, busqueda de productos y comprobante imprimible.
+- Historial de ventas con filtros por fecha.
+- Registro de devoluciones que restaura el stock vendido.
+- Gestion de usuarios con correo, telefono y permisos por rol.
+
+## Instalacion local
+
 ```bash
-git clone https://github.com/TU_USUARIO/pycommercex.git
-cd pycommercex
-
-# Crear entorno virtual (recomendado)
 python -m venv venv
-venv\Scripts\activate        # Windows
-# source venv/bin/activate   # Mac/Linux
-
-# Instalar dependencias
+venv\Scripts\activate
 pip install -r requirements.txt
-
-# Copiar archivo de entorno
-copy .env.example .env       # Windows
-# cp .env.example .env       # Mac/Linux
+python manage.py migrate
+python manage.py seed_demo
+python manage.py runserver
 ```
 
-### 3. Ejecutar
-```bash
-python run.py
-```
+Abre `http://127.0.0.1:8000`.
 
-Abre `http://localhost:5000` en tu navegador.
+## Credenciales de demo
 
-### 🔑 Credenciales por defecto
 | Campo | Valor |
-|-------|-------|
-| Identificación | `0000000000` |
-| Contraseña | `admin123` |
+| --- | --- |
+| Identificacion | `0000000000` |
+| Contrasena | `admin123` |
 | Rol | Jefe |
 
----
+El administrador principal creado por defecto es `Juan Andres Pinto` y su correo es `juanpinto0206x@gmail.com`.
 
-## ☁️ Despliegue en Render (Gratis)
+## Estructura
 
-### Paso 1 — Subir a GitHub
-```bash
-git init
-git add .
-git commit -m "Initial commit PyCommerceX"
-git remote add origin https://github.com/TU_USUARIO/pycommercex.git
-git push -u origin main
+```text
+config/      Configuracion principal de Django
+commerce/    Modelos, vistas, formularios, rutas y comando seed_demo
+static/      Estilos CSS del sistema
+templates/   Pantallas HTML del sistema
 ```
 
-### Paso 2 — Crear cuenta en Render
-1. Ir a [render.com](https://render.com) → Sign up con GitHub
-2. Dashboard → **New** → **Web Service**
-3. Conectar el repositorio `pycommercex`
+## Uso de IA
 
-### Paso 3 — Configurar el servicio
-| Campo | Valor |
-|-------|-------|
-| Build Command | `pip install -r requirements.txt` |
-| Start Command | `gunicorn run:app` |
+Se uso Codex/ChatGPT como apoyo para convertir un prototipo previo en Flask a una aplicacion Django local, revisar los requisitos del documento del curso, estructurar modelos/vistas/templates y preparar instrucciones de ejecucion. El equipo debe estudiar el codigo y poder explicar cada flujo durante la sustentacion.
 
-### Paso 4 — Base de datos PostgreSQL
-1. En Render → **New** → **PostgreSQL** → plan **Free**
-2. Nombre: `pycommercex-db`
-3. En tu Web Service → **Environment** → agregar variable:
-   - `DATABASE_URL` = (copiar desde la BD de Render)
-   - `SECRET_KEY` = (cualquier texto largo aleatorio)
+## Integrantes
 
-### Paso 5 — Deploy
-- Click **Deploy** → esperar ~2 minutos
-- Tu app estará en: `https://pycommercex.onrender.com`
-
----
-
-## 📁 Estructura del Proyecto
-
-```
-pycommercex/
-├── run.py                    # Punto de entrada
-├── requirements.txt          # Dependencias
-├── render.yaml               # Config Render
-├── Procfile                  # Comando de inicio
-└── app/
-    ├── __init__.py           # App factory + config
-    ├── models.py             # Modelos BD
-    ├── routes/
-    │   ├── auth.py           # Login / Logout
-    │   ├── dashboard.py      # Panel principal
-    │   ├── inventory.py      # Inventario
-    │   ├── pos.py            # Punto de venta
-    │   ├── sales.py          # Historial ventas
-    │   └── users.py          # Gestión usuarios
-    ├── templates/            # HTML (Jinja2)
-    └── static/css/main.css   # Estilos globales
-```
-
----
-
-## 👥 Roles del Sistema
-
-| Rol | Color | Acceso |
-|-----|-------|--------|
-| Jefe | 🟡 Amarillo | Control total |
-| Administrador | 🔴 Rojo | Todo excepto gestionar Jefes/Admins |
-| Cajero | ⚪ Gris | Solo Punto de Venta |
+- Nombre del integrante 1
+- Nombre del integrante 2
