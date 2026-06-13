@@ -54,5 +54,6 @@ Se uso Codex/ChatGPT como apoyo para convertir un prototipo previo en Flask a un
 
 ## Integrantes
 
-- Nombre del integrante 1
-- Nombre del integrante 2
+- Jesús Enrique Mendoza Gonzalez
+- Jose David González Mendoza
+- Juan Andrés Pinto Meza
