@@ -188,8 +188,8 @@ def enviar_confirmacion_compra(sale):
                     <!-- Header -->
                     <tr>
                         <td style="background:#1a1a2e;padding:30px;text-align:center">
-                            <h1 style="margin:0;color:#ffffff;font-size:24px;letter-spacing:1px">PyCommerceX</h1>
-                            <p style="margin:4px 0 0;color:#aaaacc;font-size:12px">Sistema de Gestión Comercial</p>
+                            <h1 style='margin:0 0 8px 0;color:#ffffff;font-size:24px;letter-spacing:1px'>PyCommerceX</h1>
+                            <p style='margin:0;color:#aaaacc;font-size:12px'>Sistema de Gestion Comercial</p>
                         </td>
                     </tr>
 
@@ -460,4 +460,3 @@ Se requiere reposición urgente.
         text_content=texto,
         recipient_list=destinatarios,
     )
-                 
