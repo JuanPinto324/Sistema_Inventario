@@ -42,15 +42,34 @@ def login_view(request):
         return redirect("home")
 
     form = LoginForm(request.POST or None)
+
     if request.method == "POST" and form.is_valid():
         identification = form.cleaned_data["identification"].strip()
         password = form.cleaned_data["password"]
+
+        # Limite de intentos
+        cache_key = f"login_attempts_{identification}"
+        attempts = request.session.get(cache_key, 0)
+
+        if attempts >= 5:
+            messages.error(request, "Cuenta bloqueada temporalmente por demasiados intentos fallidos. Intenta en 10 minutos.")
+            return render(request, "auth/login.html", {"form": form, "blocked": True})
+
         user = authenticate(request, username=identification, password=password)
         if user and user.is_active:
+            request.session[cache_key] = 0
             login(request, user)
             messages.success(request, f"Bienvenido, {user.full_name}.")
             return redirect(request.GET.get("next") or "home")
-        messages.error(request, "Identificacion o contrasena incorrecta.")
+
+        attempts += 1
+        request.session[cache_key] = attempts
+        request.session.set_expiry(600)  # 10 minutos
+        restantes = 5 - attempts
+        if restantes > 0:
+            messages.error(request, f"Identificacion o contrasena incorrecta. Te quedan {restantes} intentos.")
+        else:
+            messages.error(request, "Cuenta bloqueada temporalmente por demasiados intentos fallidos. Intenta en 10 minutos.")
 
     return render(request, "auth/login.html", {"form": form})
 
