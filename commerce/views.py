@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import F, Q, Sum
@@ -398,3 +398,26 @@ def users_delete(request, user_id):
         user_obj.save(update_fields=["is_active"])
         messages.warning(request, f'Usuario "{user_obj.full_name}" eliminado.')
     return redirect("users_index")
+
+
+@login_required
+def cambiar_password(request):
+    if request.method == "POST":
+        password_actual = request.POST.get("password_actual", "").strip()
+        password_nuevo = request.POST.get("password_nuevo", "").strip()
+        password_confirmar = request.POST.get("password_confirmar", "").strip()
+
+        if not request.user.check_password(password_actual):
+            messages.error(request, "La contraseña actual es incorrecta.")
+        elif len(password_nuevo) < 6:
+            messages.error(request, "La nueva contraseña debe tener al menos 6 caracteres.")
+        elif password_nuevo != password_confirmar:
+            messages.error(request, "Las contraseñas nuevas no coinciden.")
+        else:
+            request.user.set_password(password_nuevo)
+            request.user.save()
+            update_session_auth_hash(request, request.user)
+            messages.success(request, "Contraseña actualizada correctamente.")
+            return redirect("perfil")
+
+    return render(request, "auth/perfil.html")
