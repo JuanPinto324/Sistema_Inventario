@@ -50,6 +50,34 @@
     <h2>Iniciar sesion</h2>
     <p>Ingresa tus datos para continuar.</p>
     {% for message in messages %}<div class="alert alert-{{ message.tags }}">{{ message }}</div>{% endfor %}
+
+    {% if blocked_seconds > 0 %}
+    <div class="alert alert-error" id="bloqueo-alert" style="text-align:center">
+        <strong>Cuenta bloqueada.</strong> Intenta de nuevo en <span id="countdown" style="font-weight:800;font-size:1.1rem"></span>
+    </div>
+    <script>
+        (function(){
+            var seconds = {{ blocked_seconds }};
+            var el = document.getElementById('countdown');
+            var alert = document.getElementById('bloqueo-alert');
+            function update(){
+                if(seconds <= 0){
+                    alert.innerHTML = 'Ya puedes intentar de nuevo.';
+                    alert.style.background = '#d1fae5';
+                    alert.style.color = '#065f46';
+                    return;
+                }
+                var m = Math.floor(seconds / 60);
+                var s = seconds % 60;
+                el.textContent = (m > 0 ? m + 'm ' : '') + s + 's';
+                seconds--;
+                setTimeout(update, 1000);
+            }
+            update();
+        })();
+    </script>
+    {% endif %}
+
     <form method="POST">
       {% csrf_token %}
       <div class="form-group">

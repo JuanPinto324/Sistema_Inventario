@@ -42,36 +42,50 @@ def login_view(request):
         return redirect("home")
 
     form = LoginForm(request.POST or None)
+    blocked_seconds = 0
 
     if request.method == "POST" and form.is_valid():
         identification = form.cleaned_data["identification"].strip()
         password = form.cleaned_data["password"]
 
-        # Limite de intentos
         cache_key = f"login_attempts_{identification}"
+        block_key = f"login_block_time_{identification}"
         attempts = request.session.get(cache_key, 0)
+        block_time = request.session.get(block_key, None)
 
-        if attempts >= 5:
-            messages.error(request, "Cuenta bloqueada temporalmente por demasiados intentos fallidos. Intenta en 10 minutos.")
-            return render(request, "auth/login.html", {"form": form, "blocked": True})
+        # Verificar si sigue bloqueado
+        if block_time:
+            import time
+            segundos_restantes = int(block_time - time.time())
+            if segundos_restantes > 0:
+                blocked_seconds = segundos_restantes
+                return render(request, "auth/login.html", {"form": form, "blocked_seconds": blocked_seconds})
+            else:
+                request.session[cache_key] = 0
+                request.session[block_key] = None
 
         user = authenticate(request, username=identification, password=password)
         if user and user.is_active:
             request.session[cache_key] = 0
+            request.session[block_key] = None
             login(request, user)
             messages.success(request, f"Bienvenido, {user.full_name}.")
             return redirect(request.GET.get("next") or "home")
 
         attempts += 1
         request.session[cache_key] = attempts
-        request.session.set_expiry(600)  # 10 minutos
         restantes = 5 - attempts
-        if restantes > 0:
-            messages.error(request, f"Identificacion o contrasena incorrecta. Te quedan {restantes} intentos.")
-        else:
-            messages.error(request, "Cuenta bloqueada temporalmente por demasiados intentos fallidos. Intenta en 10 minutos.")
 
-    return render(request, "auth/login.html", {"form": form})
+        if attempts >= 5:
+            import time
+            request.session[block_key] = time.time() + 600
+            request.session.set_expiry(600)
+            blocked_seconds = 600
+            return render(request, "auth/login.html", {"form": form, "blocked_seconds": blocked_seconds})
+        else:
+            messages.error(request, f"Identificacion o contrasena incorrecta. Te quedan {restantes} intentos.")
+
+    return render(request, "auth/login.html", {"form": form, "blocked_seconds": blocked_seconds})
 
 
 def logout_view(request):
