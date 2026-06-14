@@ -8,6 +8,6 @@ pillow==12.2.0
 chardet==7.4.3
 et_xmlfile==2.0.0
 gunicorn==21.2.0
-psycopg2-binary==2.9.9
+psycopg[binary]==3.2.4
 dj-database-url==2.1.0
 whitenoise==6.6.0
