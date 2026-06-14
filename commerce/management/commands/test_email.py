@@ -7,16 +7,16 @@ class Command(BaseCommand):
     help = 'Prueba el envío de correo'
 
     def handle(self, *args, **kwargs):
-        self.stdout.write(f"EMAIL_HOST_USER: {settings.EMAIL_HOST_USER}")
-        self.stdout.write(f"EMAIL_HOST_PASSWORD: {'*' * len(settings.EMAIL_HOST_PASSWORD or '')}")
+        self.stdout.write(f"EMAIL_BACKEND: {settings.EMAIL_BACKEND}")
         self.stdout.write(f"DEFAULT_FROM_EMAIL: {settings.DEFAULT_FROM_EMAIL}")
+        self.stdout.write(f"ADMIN_EMAIL: {settings.ADMIN_EMAIL}")
         self.stdout.write("Enviando correo de prueba...")
         try:
             send_mail(
                 subject="Prueba PyCommerceX",
-                message="Si recibes este correo, el sistema de emails funciona correctamente.",
+                message="Si recibes este correo, el sistema de emails funciona.",
                 from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[settings.EMAIL_HOST_USER],
+                recipient_list=[settings.ADMIN_EMAIL],
                 fail_silently=False,
             )
             self.stdout.write(self.style.SUCCESS("Correo enviado exitosamente."))
