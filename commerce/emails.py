@@ -235,5 +235,229 @@ def enviar_confirmacion_compra(sale):
                                 <tr style="background:#1a1a2e">
                                     <th style="padding:10px 12px;color:#fff;font-size:12px;text-align:left">Producto</th>
                                     <th style="padding:10px 12px;color:#fff;font-size:12px;text-align:center">Cant.</th>
-                                    <th style="padding:10px 12px;color:#fff;font-size:1
-                                    
+                                    <th style="padding:10px 12px;color:#fff;font-size:12px;text-align:right">P. Unit.</th>
+                                    <th style="padding:10px 12px;color:#fff;font-size:12px;text-align:right">Subtotal</th>
+                                </tr>
+                                {items_html}
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Total -->
+                    <tr>
+                        <td style="padding:16px 30px">
+                            <table width="100%" cellpadding="0" cellspacing="0">
+                                <tr>
+                                    <td style="font-size:16px;font-weight:bold;color:#1a1a2e">TOTAL</td>
+                                    <td style="font-size:20px;font-weight:bold;color:#1a1a2e;text-align:right">$ {sale.total:,}</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background:#f8f8f8;padding:20px 30px;text-align:center;border-top:1px solid #f0f0f0">
+                            <p style="margin:0;color:#999;font-size:12px">Este correo fue generado automáticamente por PyCommerceX.</p>
+                            <p style="margin:4px 0 0;color:#999;font-size:12px">Por favor no respondas este mensaje.</p>
+                        </td>
+                    </tr>
+
+                </table>
+            </td></tr>
+        </table>
+    </body>
+    </html>
+    """
+
+    texto = f"""
+Hola {sale.customer_name},
+
+Tu compra ha sido registrada exitosamente.
+
+Factura: {sale.invoice_number}
+Fecha: {fecha}
+Cajero: {sale.cashier.full_name}
+
+Productos:
+{items_texto}
+
+Total: $ {sale.total:,}
+
+Gracias por tu compra.
+PyCommerceX
+    """.strip()
+
+    pdf_bytes = _generar_pdf_factura(sale)
+
+    _enviar_async(
+        subject=f"Confirmación de compra - {sale.invoice_number}",
+        html_content=html,
+        text_content=texto,
+        recipient_list=[sale.customer_email],
+        pdf_bytes=pdf_bytes,
+        pdf_filename=f"Factura_{sale.invoice_number}.pdf",
+    )
+
+
+def enviar_alerta_stock_bajo(product):
+    destinatarios = _destinatarios_staff()
+    if not destinatarios:
+        return
+
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"></head>
+    <body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:30px 0">
+            <tr><td align="center">
+                <table width="580" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+                    <tr>
+                        <td style="background:#f59e0b;padding:24px 30px;text-align:center">
+                            <h1 style="margin:0;color:#fff;font-size:20px">⚠️ Alerta de Stock Bajo</h1>
+                            <p style="margin:4px 0 0;color:#fff3cd;font-size:12px">PyCommerceX — Sistema de Gestión Comercial</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:28px 30px">
+                            <p style="color:#333;font-size:14px;margin:0 0 20px">El siguiente producto ha alcanzado su stock mínimo:</p>
+                            <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border-radius:6px;border-left:4px solid #f59e0b">
+                                <tr>
+                                    <td style="padding:16px 20px">
+                                        <table width="100%">
+                                            <tr>
+                                                <td style="color:#666;font-size:13px;padding:3px 0">Producto</td>
+                                                <td style="color:#1a1a2e;font-size:13px;font-weight:bold;text-align:right">{product.name}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="color:#666;font-size:13px;padding:3px 0">Código</td>
+                                                <td style="color:#1a1a2e;font-size:13px;text-align:right">{product.code}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="color:#666;font-size:13px;padding:3px 0">Stock actual</td>
+                                                <td style="color:#d97706;font-size:13px;font-weight:bold;text-align:right">{product.stock} unidades</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="color:#666;font-size:13px;padding:3px 0">Stock mínimo</td>
+                                                <td style="color:#1a1a2e;font-size:13px;text-align:right">{product.min_stock} unidades</td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                            <p style="color:#666;font-size:13px;margin:20px 0 0">Se recomienda reabastecer este producto a la brevedad posible.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="background:#f8f8f8;padding:16px 30px;text-align:center;border-top:1px solid #f0f0f0">
+                            <p style="margin:0;color:#999;font-size:12px">PyCommerceX — Notificación automática del sistema.</p>
+                        </td>
+                    </tr>
+                </table>
+            </td></tr>
+        </table>
+    </body>
+    </html>
+    """
+
+    texto = f"""
+Alerta de Stock Bajo — PyCommerceX
+
+Producto: {product.name}
+Código: {product.code}
+Stock actual: {product.stock} unidades
+Stock mínimo: {product.min_stock} unidades
+
+Se recomienda reabastecer este producto pronto.
+    """.strip()
+
+    _enviar_async(
+        subject=f"⚠️ Stock bajo - {product.name}",
+        html_content=html,
+        text_content=texto,
+        recipient_list=destinatarios,
+    )
+
+
+def enviar_alerta_stock_agotado(product):
+    destinatarios = _destinatarios_staff()
+    if not destinatarios:
+        return
+
+    fecha = timezone.localtime(timezone.now()).strftime('%d/%m/%Y %H:%M')
+
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"></head>
+    <body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:30px 0">
+            <tr><td align="center">
+                <table width="580" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+                    <tr>
+                        <td style="background:#dc2626;padding:24px 30px;text-align:center">
+                            <h1 style="margin:0;color:#fff;font-size:20px">🚨 Producto Agotado</h1>
+                            <p style="margin:4px 0 0;color:#fecaca;font-size:12px">PyCommerceX — Sistema de Gestión Comercial</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:28px 30px">
+                            <p style="color:#333;font-size:14px;margin:0 0 20px">El siguiente producto se ha agotado completamente:</p>
+                            <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff5f5;border-radius:6px;border-left:4px solid #dc2626">
+                                <tr>
+                                    <td style="padding:16px 20px">
+                                        <table width="100%">
+                                            <tr>
+                                                <td style="color:#666;font-size:13px;padding:3px 0">Producto</td>
+                                                <td style="color:#1a1a2e;font-size:13px;font-weight:bold;text-align:right">{product.name}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="color:#666;font-size:13px;padding:3px 0">Código</td>
+                                                <td style="color:#1a1a2e;font-size:13px;text-align:right">{product.code}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="color:#666;font-size:13px;padding:3px 0">Stock actual</td>
+                                                <td style="color:#dc2626;font-size:13px;font-weight:bold;text-align:right">0 unidades</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="color:#666;font-size:13px;padding:3px 0">Fecha</td>
+                                                <td style="color:#1a1a2e;font-size:13px;text-align:right">{fecha}</td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                            <p style="color:#666;font-size:13px;margin:20px 0 0">Se requiere reposición urgente para evitar pérdida de ventas.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="background:#f8f8f8;padding:16px 30px;text-align:center;border-top:1px solid #f0f0f0">
+                            <p style="margin:0;color:#999;font-size:12px">PyCommerceX — Notificación automática del sistema.</p>
+                        </td>
+                    </tr>
+                </table>
+            </td></tr>
+        </table>
+    </body>
+    </html>
+    """
+
+    texto = f"""
+Producto Agotado — PyCommerceX
+
+Producto: {product.name}
+Código: {product.code}
+Stock actual: 0 unidades
+Fecha: {fecha}
+
+Se requiere reposición urgente.
+    """.strip()
+
+    _enviar_async(
+        subject=f"🚨 Producto agotado - {product.name}",
+        html_content=html,
+        text_content=texto,
+        recipient_list=destinatarios,
+    )
+                 
