@@ -1,0 +1,14 @@
+Django==5.0.6
+asgiref==3.11.1
+sqlparse==0.5.5
+tzdata==2026.2
+openpyxl==3.1.5
+reportlab==4.2.2
+pillow==12.2.0
+chardet==7.4.3
+et_xmlfile==2.0.0
+gunicorn==21.2.0
+psycopg[binary]==3.2.4
+dj-database-url==2.1.0
+whitenoise==6.6.0
+django-sendgrid-v5==1.2.3
