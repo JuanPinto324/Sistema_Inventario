@@ -1,3 +1,4 @@
+import threading
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
@@ -5,7 +6,6 @@ from .models import User
 
 
 def _destinatarios_staff():
-    """Retorna los correos de todos los jefes y admins activos."""
     return list(
         User.objects.filter(
             is_active=True,
@@ -14,8 +14,23 @@ def _destinatarios_staff():
     )
 
 
+def _enviar_async(subject, message, recipient_list):
+    """Envía el correo en un hilo separado para no bloquear la petición."""
+    def _send():
+        try:
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=recipient_list,
+                fail_silently=True,
+            )
+        except Exception:
+            pass
+    threading.Thread(target=_send, daemon=True).start()
+
+
 def enviar_confirmacion_compra(sale):
-    """Correo al cliente cuando realiza una compra."""
     if not sale.customer_email:
         return
 
@@ -40,17 +55,14 @@ Total: ${sale.total:,}
 Gracias por tu compra.
     """.strip()
 
-    send_mail(
+    _enviar_async(
         subject=f"Confirmación de compra - {sale.invoice_number}",
         message=mensaje,
-        from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[sale.customer_email],
-        fail_silently=True,
     )
 
 
 def enviar_alerta_stock_bajo(product):
-    """Correo a jefes y admins cuando un producto llega al stock mínimo."""
     destinatarios = _destinatarios_staff()
     if not destinatarios:
         return
@@ -66,17 +78,14 @@ Stock mínimo: {product.min_stock} unidades
 Se recomienda reabastecer este producto pronto.
     """.strip()
 
-    send_mail(
+    _enviar_async(
         subject=f"⚠️ Stock bajo - {product.name}",
         message=mensaje,
-        from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=destinatarios,
-        fail_silently=True,
     )
 
 
 def enviar_alerta_stock_agotado(product):
-    """Correo a jefes y admins cuando un producto llega a cero."""
     destinatarios = _destinatarios_staff()
     if not destinatarios:
         return
@@ -94,11 +103,8 @@ Se requiere reposición urgente.
 Fecha: {timezone.localtime(timezone.now()).strftime('%d/%m/%Y %H:%M')}
     """.strip()
 
-    send_mail(
+    _enviar_async(
         subject=f"🚨 Producto agotado - {product.name}",
         message=mensaje,
-        from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=destinatarios,
-        fail_silently=True,
     )
-    
