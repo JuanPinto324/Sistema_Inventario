@@ -45,7 +45,7 @@ Hola {sale.customer_name},
 Tu compra ha sido registrada exitosamente.
 
 Factura: {sale.invoice_number}
-Fecha: {sale.created_at.strftime('%d/%m/%Y %H:%M')}
+Fecha: {timezone.localtime(sale.created_at).strftime('%d/%m/%Y %H:%M')}
 
 Productos:
 {items_detalle}
@@ -108,3 +108,4 @@ Fecha: {timezone.localtime(timezone.now()).strftime('%d/%m/%Y %H:%M')}
         message=mensaje,
         recipient_list=destinatarios,
     )
+    
