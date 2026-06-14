@@ -16,6 +16,8 @@ from django.views.decorators.http import require_POST
 from .forms import LoginForm, ProductForm, UserForm
 from .models import Product, Return, Sale, SaleItem, User
 
+from .emails import enviar_confirmacion_compra, enviar_alerta_stock_bajo, enviar_alerta_stock_agotado
+
 
 def staff_required(view_func):
     @wraps(view_func)
@@ -234,6 +236,15 @@ def pos_complete(request):
         )
         product.stock -= quantity
         product.save(update_fields=["stock"])
+    
+    # Enviar correos
+    enviar_confirmacion_compra(sale)
+    for product, quantity, unit_price, subtotal in validated:
+        p = Product.objects.get(pk=product.id)
+        if p.stock == 0:
+            enviar_alerta_stock_agotado(p)
+        elif p.stock <= p.min_stock:
+            enviar_alerta_stock_bajo(p)
 
     return JsonResponse({"ok": True, "sale_id": sale.id, "invoice": sale.invoice_number})
 
