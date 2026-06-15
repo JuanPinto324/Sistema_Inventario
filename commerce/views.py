@@ -25,6 +25,7 @@ from .reportes import (
     export_inventario_pdf,
     export_inventario_excel,
     export_rentabilidad_excel,
+    export_rentabilidad_pdf,
 )
 
 
@@ -525,6 +526,12 @@ def reporte_inventario_excel(request):
 def reporte_rentabilidad_excel(request):
     products = Product.objects.filter(is_active=True).order_by("name")
     return export_rentabilidad_excel(list(products))
+
+
+@staff_required
+def reporte_rentabilidad_pdf(request):
+    products = Product.objects.filter(is_active=True).order_by("name")
+    return export_rentabilidad_pdf(list(products))
 
 
 @staff_required

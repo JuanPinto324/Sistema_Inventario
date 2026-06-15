@@ -439,4 +439,94 @@ def export_rentabilidad_excel(products):
     )
     response['Content-Disposition'] = 'attachment; filename="reporte_rentabilidad.xlsx"'
     return response
+
+
+def export_rentabilidad_pdf(products):
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=landscape(A4),
+                            rightMargin=1.5*cm, leftMargin=1.5*cm,
+                            topMargin=1.5*cm, bottomMargin=1.5*cm)
+
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle('titulo_rentabilidad', parent=styles['Normal'],
+                                 fontSize=16, fontName='Helvetica-Bold', alignment=TA_CENTER)
+    subtitle_style = ParagraphStyle('sub_rentabilidad', parent=styles['Normal'],
+                                    fontSize=9, textColor=colors.grey, alignment=TA_CENTER)
+
+    total_cost = sum(p.cost_price * p.stock for p in products)
+    total_sale_value = sum(p.sell_price * p.stock for p in products)
+    total_profit = total_sale_value - total_cost
+    overall_margin = (total_profit / total_sale_value * 100) if total_sale_value else 0
+
+    elements = [
+        Paragraph("PyCommerceX", title_style),
+        Paragraph("Reporte de Rentabilidad", subtitle_style),
+        Paragraph(
+            f"Generado el {timezone.localtime(timezone.now()).strftime('%d/%m/%Y %H:%M')}",
+            subtitle_style,
+        ),
+        Spacer(1, 0.4*cm),
+        HRFlowable(width="100%", thickness=1, color=colors.HexColor('#1a1a2e')),
+        Spacer(1, 0.4*cm),
+    ]
+
+    summary = [
+        ["Costo en stock", "Valor de venta", "Utilidad potencial", "Margen general"],
+        [
+            "$ {:,}".format(total_cost).replace(",", "."),
+            "$ {:,}".format(total_sale_value).replace(",", "."),
+            "$ {:,}".format(total_profit).replace(",", "."),
+            f"{overall_margin:.1f}%",
+        ],
+    ]
+    summary_table = Table(summary, colWidths=[6.5*cm, 6.5*cm, 6.5*cm, 5*cm])
+    summary_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a1a2e')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('GRID', (0, 0), (-1, -1), 0.3, colors.lightgrey),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    elements.append(summary_table)
+    elements.append(Spacer(1, 0.4*cm))
+
+    data = [["Codigo", "Producto", "Costo", "Venta", "Utilidad und.", "Margen", "Stock", "Utilidad stock"]]
+    for product in products:
+        unit_profit = product.sell_price - product.cost_price
+        margin = (unit_profit / product.sell_price * 100) if product.sell_price else 0
+        stock_profit = unit_profit * product.stock
+        data.append([
+            product.code,
+            product.name,
+            "$ {:,}".format(product.cost_price).replace(",", "."),
+            "$ {:,}".format(product.sell_price).replace(",", "."),
+            "$ {:,}".format(unit_profit).replace(",", "."),
+            f"{margin:.1f}%",
+            str(product.stock),
+            "$ {:,}".format(stock_profit).replace(",", "."),
+        ])
+
+    table = Table(data, colWidths=[2.5*cm, 5.5*cm, 2.7*cm, 2.7*cm, 3*cm, 2.1*cm, 1.7*cm, 3.2*cm])
+    table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 7.5),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a1a2e')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('ALIGN', (1, 1), (1, -1), 'LEFT'),
+        ('GRID', (0, 0), (-1, -1), 0.3, colors.lightgrey),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9ff')]),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(table)
+
+    doc.build(elements)
+    buffer.seek(0)
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="reporte_rentabilidad.pdf"'
+    return response
     
