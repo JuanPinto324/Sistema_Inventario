@@ -29,8 +29,14 @@
       <a href="{% url 'inventory_index' %}" class="nav-item {% if 'inventory' in request.path %}active{% endif %}">
         <span class="nav-icon"><i data-lucide="boxes"></i></span> Inventario
       </a>
-      <a href="{% url 'users_index' %}" class="nav-item {% if 'users' in request.path %}active{% endif %}">
+      <a href="{% url 'users_index' %}" class="nav-item {% if 'users' in request.path and 'activity' not in request.path %}active{% endif %}">
         <span class="nav-icon"><i data-lucide="users"></i></span> Usuarios
+      </a>
+      <a href="{% url 'activity_log' %}" class="nav-item {% if 'activity' in request.path %}active{% endif %}">
+        <span class="nav-icon"><i data-lucide="activity"></i></span> Actividad
+      </a>
+      <a href="{% url 'perfil' %}" class="nav-item {% if 'perfil' in request.path %}active{% endif %}">
+        <span class="nav-icon"><i data-lucide="user-round"></i></span> Mi Perfil
       </a>
       <div class="nav-section-label">Operaciones</div>
       {% endif %}
