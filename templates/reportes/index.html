@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load commerce_extras %}
 {% block title %}Reportes - PyCommerceX{% endblock %}
 {% block topbar_title %}Reportes{% endblock %}
 {% block content %}
@@ -86,6 +87,87 @@
         </div>
     </div>
 
+</div>
+
+<div class="stat-grid mt-3">
+    <div class="card metric-card">
+        <div class="metric-head">
+            <div class="card-title">Costo en stock</div>
+            <span class="metric-icon"><i data-lucide="package"></i></span>
+        </div>
+        <div class="card-value">$ {{ profitability_summary.total_cost|money }}</div>
+    </div>
+    <div class="card metric-card">
+        <div class="metric-head">
+            <div class="card-title">Valor de venta</div>
+            <span class="metric-icon"><i data-lucide="badge-dollar-sign"></i></span>
+        </div>
+        <div class="card-value">$ {{ profitability_summary.total_sale_value|money }}</div>
+    </div>
+    <div class="card metric-card">
+        <div class="metric-head">
+            <div class="card-title">Utilidad potencial</div>
+            <span class="metric-icon"><i data-lucide="trending-up"></i></span>
+        </div>
+        <div class="card-value">$ {{ profitability_summary.total_profit|money }}</div>
+    </div>
+    <div class="card metric-card">
+        <div class="metric-head">
+            <div class="card-title">Margen general</div>
+            <span class="metric-icon"><i data-lucide="percent"></i></span>
+        </div>
+        <div class="card-value">{{ profitability_summary.overall_margin|floatformat:1 }}%</div>
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="flex-between mb-2" style="flex-wrap:wrap">
+        <div>
+            <h2 style="margin:0;font-size:1.1rem">Reporte de Rentabilidad</h2>
+            <p style="margin:4px 0 0;color:var(--text-muted);font-size:.85rem">
+                Compara costo, precio de venta, utilidad por unidad y margen de ganancia.
+            </p>
+        </div>
+        <span class="badge badge-info">{{ profitability_summary.total_products }} productos activos</span>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Codigo</th>
+                    <th>Producto</th>
+                    <th>Costo</th>
+                    <th>Precio venta</th>
+                    <th>Utilidad und.</th>
+                    <th>Margen</th>
+                    <th>Stock</th>
+                    <th>Utilidad stock</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in profitability_rows %}
+                <tr>
+                    <td><code>{{ row.product.code }}</code></td>
+                    <td>{{ row.product.name }}</td>
+                    <td>$ {{ row.product.cost_price|money }}</td>
+                    <td>$ {{ row.product.sell_price|money }}</td>
+                    <td class="{% if row.unit_profit < 0 %}text-danger{% else %}text-success{% endif %}">
+                        $ {{ row.unit_profit|money }}
+                    </td>
+                    <td class="{% if row.margin < 0 %}text-danger{% elif row.margin < 20 %}text-warning{% else %}text-success{% endif %}">
+                        {{ row.margin|floatformat:1 }}%
+                    </td>
+                    <td>{{ row.product.stock }}</td>
+                    <td class="{% if row.stock_profit < 0 %}text-danger{% else %}text-success{% endif %}">
+                        $ {{ row.stock_profit|money }}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="empty-state">No hay productos activos para calcular rentabilidad.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <script>

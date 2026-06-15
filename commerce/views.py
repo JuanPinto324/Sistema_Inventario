@@ -517,5 +517,40 @@ def reporte_inventario_excel(request):
 
 @staff_required
 def reportes_index(request):
-    return render(request, "reportes/index.html")
+    products = Product.objects.filter(is_active=True).order_by("name")
+    profitability_rows = []
+    total_cost = 0
+    total_sale_value = 0
+    total_profit = 0
+
+    for product in products:
+        unit_profit = product.sell_price - product.cost_price
+        margin = (unit_profit / product.sell_price * 100) if product.sell_price else 0
+        stock_cost = product.cost_price * product.stock
+        stock_sale_value = product.sell_price * product.stock
+        stock_profit = unit_profit * product.stock
+
+        total_cost += stock_cost
+        total_sale_value += stock_sale_value
+        total_profit += stock_profit
+
+        profitability_rows.append({
+            "product": product,
+            "unit_profit": unit_profit,
+            "margin": margin,
+            "stock_profit": stock_profit,
+        })
+
+    overall_margin = (total_profit / total_sale_value * 100) if total_sale_value else 0
+
+    return render(request, "reportes/index.html", {
+        "profitability_rows": profitability_rows,
+        "profitability_summary": {
+            "total_products": products.count(),
+            "total_cost": total_cost,
+            "total_sale_value": total_sale_value,
+            "total_profit": total_profit,
+            "overall_margin": overall_margin,
+        },
+    })
     
