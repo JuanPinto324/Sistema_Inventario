@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% block title %}Reportes - PyCommerceX{% endblock %}
+{% block topbar_title %}Reportes{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <div class="page-title">
+        <span class="icon"><i data-lucide="file-bar-chart"></i></span>
+        <h1>Reportes</h1>
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+
+    <!-- Reporte de Ventas -->
+    <div class="card">
+        <div class="card-body" style="padding:28px">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+                <div style="width:44px;height:44px;border-radius:10px;background:rgba(37,99,235,.12);display:flex;align-items:center;justify-content:center;color:#2563eb">
+                    <i data-lucide="receipt-text" style="width:22px;height:22px"></i>
+                </div>
+                <div>
+                    <h2 style="margin:0;font-size:1.1rem">Reporte de Ventas</h2>
+                    <p style="margin:2px 0 0;font-size:.85rem;color:var(--text-muted)">Exporta el historial de ventas</p>
+                </div>
+            </div>
+
+            <!-- Filtro de fechas -->
+            <div style="background:var(--bg-secondary,#f8f9ff);border-radius:8px;padding:16px;margin-bottom:20px">
+                <p style="margin:0 0 10px;font-size:.8rem;font-weight:700;color:var(--text-muted)">FILTRAR POR FECHA (opcional)</p>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                    <div>
+                        <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:4px">Desde</label>
+                        <input type="date" id="ventas_desde" class="form-control" style="font-size:.85rem">
+                    </div>
+                    <div>
+                        <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:4px">Hasta</label>
+                        <input type="date" id="ventas_hasta" class="form-control" style="font-size:.85rem">
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <a id="btn_ventas_pdf" href="{% url 'reporte_ventas_pdf' %}"
+                    class="btn btn-primary" style="text-align:center;justify-content:center">
+                    <i data-lucide="file-text"></i> Descargar PDF
+                </a>
+                <a id="btn_ventas_excel" href="{% url 'reporte_ventas_excel' %}"
+                    class="btn btn-outline" style="text-align:center;justify-content:center;color:#16a34a;border-color:#16a34a">
+                    <i data-lucide="table-2"></i> Descargar Excel
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reporte de Inventario -->
+    <div class="card">
+        <div class="card-body" style="padding:28px">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+                <div style="width:44px;height:44px;border-radius:10px;background:rgba(124,58,237,.12);display:flex;align-items:center;justify-content:center;color:#7c3aed">
+                    <i data-lucide="boxes" style="width:22px;height:22px"></i>
+                </div>
+                <div>
+                    <h2 style="margin:0;font-size:1.1rem">Reporte de Inventario</h2>
+                    <p style="margin:2px 0 0;font-size:.85rem;color:var(--text-muted)">Exporta el estado actual del inventario</p>
+                </div>
+            </div>
+
+            <div style="background:var(--bg-secondary,#f8f9ff);border-radius:8px;padding:16px;margin-bottom:20px">
+                <p style="margin:0;font-size:.85rem;color:var(--text-muted)">
+                    <i data-lucide="info" style="width:14px;height:14px;display:inline;vertical-align:middle"></i>
+                    Incluye todos los productos activos con su codigo, precios, stock actual y estado.
+                </p>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:44px">
+                <a href="{% url 'reporte_inventario_pdf' %}"
+                    class="btn btn-primary" style="text-align:center;justify-content:center">
+                    <i data-lucide="file-text"></i> Descargar PDF
+                </a>
+                <a href="{% url 'reporte_inventario_excel' %}"
+                    class="btn btn-outline" style="text-align:center;justify-content:center;color:#16a34a;border-color:#16a34a">
+                    <i data-lucide="table-2"></i> Descargar Excel
+                </a>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const desde = document.getElementById('ventas_desde');
+    const hasta = document.getElementById('ventas_hasta');
+    const btnPdf = document.getElementById('btn_ventas_pdf');
+    const btnExcel = document.getElementById('btn_ventas_excel');
+
+    function actualizarLinks() {
+        const d = desde.value;
+        const h = hasta.value;
+        const params = d && h ? '?from=' + d + '&to=' + h : '';
+        btnPdf.href = "{% url 'reporte_ventas_pdf' %}" + params;
+        btnExcel.href = "{% url 'reporte_ventas_excel' %}" + params;
+    }
+
+    desde.addEventListener('change', actualizarLinks);
+    hasta.addEventListener('change', actualizarLinks);
+});
+</script>
+{% endblock %}

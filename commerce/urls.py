@@ -25,4 +25,10 @@ urlpatterns = [
     path("users/<int:user_id>/delete/", views.users_delete, name="users_delete"),
     path("perfil/", views.cambiar_password, name="perfil"),
     path("activity/", views.activity_log, name="activity_log"),
+    path("reportes/ventas/pdf/", views.reporte_ventas_pdf, name="reporte_ventas_pdf"),
+    path("reportes/ventas/excel/", views.reporte_ventas_excel, name="reporte_ventas_excel"),
+    path("reportes/inventario/pdf/", views.reporte_inventario_pdf, name="reporte_inventario_pdf"),
+    path("reportes/inventario/excel/", views.reporte_inventario_excel, name="reporte_inventario_excel"),
+    path("reportes/", views.reportes_index, name="reportes_index"),
 ]
+

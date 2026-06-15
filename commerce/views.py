@@ -19,6 +19,8 @@ from .models import Product, Return, Sale, SaleItem, User, ActivityLog
 from .emails import enviar_confirmacion_compra, enviar_alerta_stock_bajo, enviar_alerta_stock_agotado
 from .activity import registrar
 
+from .reportes import export_ventas_pdf, export_ventas_excel, export_inventario_pdf, export_inventario_excel
+
 
 def staff_required(view_func):
     @wraps(view_func)
@@ -467,4 +469,46 @@ def activity_log(request):
         "action_filter": action_filter,
         "action_choices": ActivityLog.ACTION_CHOICES,
     })
+
+@staff_required
+def reporte_ventas_pdf(request):
+    date_from = request.GET.get("from", "")
+    date_to = request.GET.get("to", "")
+    sales = Sale.objects.all().select_related("cashier").prefetch_related("items")
+    if date_from and date_to:
+        from datetime import datetime
+        start = timezone.make_aware(datetime.strptime(date_from, "%Y-%m-%d").replace(hour=0, minute=0))
+        end = timezone.make_aware(datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59))
+        sales = sales.filter(created_at__range=(start, end))
+    return export_ventas_pdf(list(sales), date_from, date_to)
+
+
+@staff_required
+def reporte_ventas_excel(request):
+    date_from = request.GET.get("from", "")
+    date_to = request.GET.get("to", "")
+    sales = Sale.objects.all().select_related("cashier").prefetch_related("items")
+    if date_from and date_to:
+        from datetime import datetime
+        start = timezone.make_aware(datetime.strptime(date_from, "%Y-%m-%d").replace(hour=0, minute=0))
+        end = timezone.make_aware(datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59))
+        sales = sales.filter(created_at__range=(start, end))
+    return export_ventas_excel(list(sales), date_from, date_to)
+
+
+@staff_required
+def reporte_inventario_pdf(request):
+    products = Product.objects.filter(is_active=True).order_by("name")
+    return export_inventario_pdf(list(products))
+
+
+@staff_required
+def reporte_inventario_excel(request):
+    products = Product.objects.filter(is_active=True).order_by("name")
+    return export_inventario_excel(list(products))
+
+
+@staff_required
+def reportes_index(request):
+    return render(request, "reportes/index.html")
     

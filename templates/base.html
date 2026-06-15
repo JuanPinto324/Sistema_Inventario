@@ -29,6 +29,9 @@
       <a href="{% url 'inventory_index' %}" class="nav-item {% if 'inventory' in request.path %}active{% endif %}">
         <span class="nav-icon"><i data-lucide="boxes"></i></span> Inventario
       </a>
+      <a href="{% url 'reportes_index' %}" class="nav-item {% if 'reportes' in request.path %}active{% endif %}">
+        <span class="nav-icon"><i data-lucide="file-bar-chart"></i></span> Reportes
+      </a>
       <a href="{% url 'users_index' %}" class="nav-item {% if 'users' in request.path and 'activity' not in request.path %}active{% endif %}">
         <span class="nav-icon"><i data-lucide="users"></i></span> Usuarios
       </a>
