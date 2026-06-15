@@ -1,160 +1,126 @@
-# PyCommerceX - Sistema de Inventario y Ventas
+# PyCommerceX
 
-Aplicacion web construida con Django para el proyecto final de Programacion Avanzada de la Universidad de La Guajira. El sistema permite administrar inventario, ventas, usuarios, devoluciones, reportes y notificaciones automaticas para un negocio pequeno o mediano.
+Sistema web para gestionar inventario y ventas, hecho con Django como proyecto final de Programacion Avanzada en la Universidad de La Guajira, 2026-I.
 
 Repositorio: https://github.com/JuanPinto324/Sistema_Inventario
+En produccion: https://pycommercex.onrender.com
 
-## Problema que resuelve
+---
 
-Muchos negocios pequenos controlan sus productos, ventas y existencias con hojas de calculo o registros manuales. Esto dificulta saber cuanto se vendio, que productos estan por agotarse, quien realizo una operacion y que rentabilidad tiene el inventario.
+## Por que lo hicimos
 
-PyCommerceX centraliza esos procesos en una aplicacion web con roles de usuario, punto de venta, control de stock, reportes exportables y alertas automaticas por correo.
+En muchos negocios pequeños el control de productos y ventas se lleva en cuadernos o en Excel. Eso hace complicado saber cuanto se vendio en el dia, cuales productos se estan agotando, quien hizo cada cosa y si los precios realmente dejan ganancia.
 
-## Funcionalidades principales
+PyCommerceX resuelve eso: una sola aplicacion donde el jefe, los administradores y los cajeros pueden trabajar desde cualquier dispositivo, con todo registrado y organizado.
 
-- Autenticacion con roles: jefe, administrador y cajero.
-- Bloqueo temporal de login despues de 5 intentos fallidos, con contador regresivo.
-- Perfil de usuario con visualizacion de datos y cambio de contrasena.
-- Punto de venta con carrito, busqueda de productos y generacion de factura.
-- Numeracion consecutiva de facturas y reutilizacion de codigos libres de productos activos.
-- CRUD de productos con codigo, costo, precio de venta, stock y stock minimo.
-- Historial de ventas con filtros por fecha.
-- Devoluciones que restauran automaticamente el stock vendido.
-- Registro de actividad por usuario: login, logout, ventas, devoluciones, productos y usuarios.
-- Reportes de ventas e inventario exportables a PDF y Excel.
-- Reporte de rentabilidad con costo, valor de venta, utilidad potencial, margen y diagnostico.
-- Exportacion de rentabilidad a PDF y Excel.
+Teniamos una version anterior hecha en Flask, pero decidimos migrar todo a Django para el proyecto final porque nos daba mejor estructura y mas herramientas para escalar. Esta version es mas completa, esta desplegada en la nube y conectada a una base de datos real en Supabase.
+
+
+---
+
+## Que puede hacer
+
+- Login con roles: jefe, administrador y cajero, cada uno con permisos distintos
+- Si alguien falla la contrasena 5 veces seguidas, la cuenta se bloquea 10 minutos y aparece un contador en pantalla
+- Cada usuario tiene una pagina de perfil donde puede cambiar su contrasena
+- Punto de venta con carrito, busqueda de productos y facturas numeradas en orden
+- Si se elimina un producto y queda un codigo libre, el sistema lo reutiliza automaticamente
+- Inventario completo con CRUD de productos
+- Historial de ventas con filtros por fecha
+- Devoluciones que devuelven el stock automaticamente
+- Registro de todo lo que hace cada usuario: cuando entro, que vendio, que modifico
+- Reportes de ventas e inventario descargables en PDF y Excel
+- Reporte de rentabilidad que muestra el margen de cada producto y si esta dejando perdida
 - Correos automaticos con SendGrid:
-  - Confirmacion de compra al cliente.
-  - Alerta de stock bajo al jefe o administrador.
-  - Alerta de producto agotado al jefe o administrador.
+  - Al cliente cuando compra, con la factura adjunta en PDF
+  - Al jefe o admin cuando un producto baja del stock minimo
+  - Al jefe o admin cuando un producto se agota
 
-## Tecnologias utilizadas
+---
 
-- Python
-- Django
-- SQLite para desarrollo local
-- PostgreSQL/Supabase para produccion
-- Render para despliegue
-- SendGrid para envio de correos
-- ReportLab para generacion de PDF
-- OpenPyXL para generacion de Excel
-- WhiteNoise para archivos estaticos en produccion
+## Con que esta hecho
 
-## Instalacion local
+- Python 3.12 y Django 5.0
+- PostgreSQL en produccion (Supabase), SQLite en local
+- Render para el despliegue
+- SendGrid para los correos
+- ReportLab para los PDF
+- OpenPyXL para los Excel
+- WhiteNoise para los archivos estaticos
+- Gunicorn como servidor
 
-1. Clonar el repositorio:
+---
+
+## Como correrlo local
 
 ```bash
 git clone https://github.com/JuanPinto324/Sistema_Inventario.git
 cd Sistema_Inventario
-```
-
-2. Crear y activar entorno virtual:
-
-```bash
 python -m venv venv
 venv\Scripts\activate
-```
-
-3. Instalar dependencias:
-
-```bash
 pip install -r requirements.txt
-```
-
-4. Ejecutar migraciones y datos de prueba:
-
-```bash
 python manage.py migrate
 python manage.py seed_demo
-```
-
-5. Iniciar servidor local:
-
-```bash
 python manage.py runserver
 ```
 
-Abrir en el navegador:
+Abrir en: http://127.0.0.1:8000
 
-```text
-http://127.0.0.1:8000
-```
+---
 
-## Credenciales de demo
+## Credenciales de prueba
 
 | Campo | Valor |
-| --- | --- |
+|---|---|
 | Identificacion | `0000000000` |
 | Contrasena | `admin123` |
 | Rol | Jefe |
 
+---
+
 ## Variables de entorno
 
-El proyecto puede ejecutarse localmente con SQLite sin variables adicionales. Para produccion en Render/Supabase y envio de correos se usan variables de entorno.
+Localmente corre sin configuracion adicional usando SQLite. Para produccion se necesita un archivo `.env` basado en `.env.example`:
 
-Ejemplo:
-
-```text
+```
 SECRET_KEY=clave-segura
 DEBUG=False
 DATABASE_URL=postgresql://...
 SENDGRID_API_KEY=SG...
 DEFAULT_FROM_EMAIL=correo_verificado_en_sendgrid
-ADMIN_EMAIL=correo_admin
-EMAIL_TIMEOUT=15
+ADMIN_EMAIL=correo_del_admin
 ```
 
-Notas:
 
-- No se debe subir un archivo `.env` real al repositorio.
-- `DEFAULT_FROM_EMAIL` debe ser un remitente verificado en SendGrid.
-- Si no hay `SENDGRID_API_KEY`, Django usa el backend de consola para desarrollo local.
+---
 
-## Estructura del proyecto
+## Estructura
 
-```text
-config/                     Configuracion principal de Django
-commerce/                   Modelos, vistas, formularios, correos y reportes
-commerce/management/        Comandos personalizados, incluido seed_demo
-commerce/migrations/        Migraciones de base de datos
-commerce/templatetags/      Filtros personalizados para templates
-static/                     Archivos CSS
-templates/                  Pantallas HTML del sistema
-requirements.txt            Dependencias del proyecto
-Procfile                    Comando de ejecucion en Render
-runtime.txt                 Version de Python para Render
+```
+config/               Configuracion de Django
+commerce/             Modelos, vistas, formularios, correos y reportes
+commerce/management/  Comandos personalizados
+commerce/migrations/  Migraciones
+commerce/templatetags/ Filtros para templates
+static/               CSS
+templates/            HTML
+requirements.txt      Dependencias
+Procfile              Inicio en Render
+runtime.txt           Version de Python
 ```
 
-## Integrantes y aportes
+---
 
-| Integrante | Aporte principal |
-| --- | --- |
-| Juan Andres Pinto Meza | Notificaciones automaticas por correo con SendGrid: confirmacion de compra, stock bajo y producto agotado. |
-| Jose David Gonzales | Seguridad y usuarios: limite de intentos de login, perfil con cambio de contrasena y registro de actividad. |
-| Jesus Enrique Mendoza | Reportes: exportacion de ventas/inventario, reporte de rentabilidad, diagnostico de margenes y exportaciones PDF/Excel. |
+## Quienes lo hicimos
+
+| Integrante            | Que hizo |
+|---|---|
+| Juan Andres Pinto     | Despliegue en Render con Supabase, correos automaticos con SendGrid: confirmacion de compra con PDF adjunto, alerta de stock bajo y alerta de producto agotado |
+| Jose David Gonzales   | Bloqueo de login con contador regresivo, pagina de perfil con cambio de contrasena, registro de actividad por usuario |
+| Jesus Enrique Mendoza | Reportes de ventas e inventario en PDF y Excel, reporte de rentabilidad con diagnostico de margenes, correccion de numeracion de facturas y productos |
+
+---
 
 ## Uso de IA
 
-Durante el desarrollo se usaron herramientas de IA como Codex/ChatGPT y Claude AI como apoyo para:
-
-- Migrar la idea inicial de Flask a Django.
-- Organizar modelos, vistas, templates y rutas.
-- Revisar errores de configuracion y despliegue.
-- Mejorar reportes, exportaciones y notificaciones.
-- Documentar el proyecto y preparar la sustentacion.
-
-El equipo debe poder explicar el codigo durante la sustentacion, especialmente las funcionalidades que implemento cada integrante.
-
-## Sustentacion sugerida
-
-Para una demo corta de 10 minutos se recomienda mostrar:
-
-1. Inicio de sesion y roles.
-2. Creacion o edicion de un producto.
-3. Venta desde el punto de venta.
-4. Factura generada y correo de confirmacion.
-5. Historial de ventas y devolucion.
-6. Reportes PDF/Excel y rentabilidad.
-7. Registro de actividad por usuario.
+Usamos Claude AI y Codex durante el desarrollo, principalmente para resolver errores de configuracion, ajustar el despliegue en Render y mejorar partes especificas como los reportes y los correos.
