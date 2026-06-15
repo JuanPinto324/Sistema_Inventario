@@ -541,6 +541,8 @@ def reportes_index(request):
     total_cost = 0
     total_sale_value = 0
     total_profit = 0
+    low_margin_count = 0
+    loss_count = 0
 
     for product in products:
         unit_profit = product.sell_price - product.cost_price
@@ -552,6 +554,10 @@ def reportes_index(request):
         total_cost += stock_cost
         total_sale_value += stock_sale_value
         total_profit += stock_profit
+        if unit_profit < 0:
+            loss_count += 1
+        elif margin < 20:
+            low_margin_count += 1
 
         profitability_rows.append({
             "product": product,
@@ -560,6 +566,7 @@ def reportes_index(request):
             "stock_profit": stock_profit,
         })
 
+    profitability_rows.sort(key=lambda row: row["margin"])
     overall_margin = (total_profit / total_sale_value * 100) if total_sale_value else 0
 
     return render(request, "reportes/index.html", {
@@ -570,6 +577,8 @@ def reportes_index(request):
             "total_sale_value": total_sale_value,
             "total_profit": total_profit,
             "overall_margin": overall_margin,
+            "low_margin_count": low_margin_count,
+            "loss_count": loss_count,
         },
     })
     

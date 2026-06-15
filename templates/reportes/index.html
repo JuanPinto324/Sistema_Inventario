@@ -138,6 +138,20 @@
             </a>
         </div>
     </div>
+    {% if profitability_summary.loss_count or profitability_summary.low_margin_count %}
+    <div class="alert alert-warning">
+        <i data-lucide="triangle-alert"></i>
+        <span>
+            {{ profitability_summary.loss_count }} productos estan generando perdida y
+            {{ profitability_summary.low_margin_count }} productos tienen margen menor al 20%.
+        </span>
+    </div>
+    {% else %}
+    <div class="alert alert-success">
+        <i data-lucide="check-circle-2"></i>
+        <span>Todos los productos activos tienen margen de ganancia saludable.</span>
+    </div>
+    {% endif %}
     <div class="table-wrap">
         <table>
             <thead>
@@ -150,6 +164,7 @@
                     <th>Margen</th>
                     <th>Stock</th>
                     <th>Utilidad stock</th>
+                    <th>Diagnostico</th>
                 </tr>
             </thead>
             <tbody>
@@ -169,9 +184,18 @@
                     <td class="{% if row.stock_profit < 0 %}text-danger{% else %}text-success{% endif %}">
                         $ {{ row.stock_profit|money }}
                     </td>
+                    <td>
+                        {% if row.unit_profit < 0 %}
+                        <span class="badge badge-danger">Perdida</span>
+                        {% elif row.margin < 20 %}
+                        <span class="badge badge-warning">Margen bajo</span>
+                        {% else %}
+                        <span class="badge badge-success">Saludable</span>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="8" class="empty-state">No hay productos activos para calcular rentabilidad.</td></tr>
+                <tr><td colspan="9" class="empty-state">No hay productos activos para calcular rentabilidad.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
