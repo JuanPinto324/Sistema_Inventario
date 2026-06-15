@@ -328,4 +328,115 @@ def export_inventario_excel(products):
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename="reporte_inventario.xlsx"'
     return response
+
+
+def export_rentabilidad_excel(products):
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Rentabilidad"
+
+    color_header = "1a1a2e"
+    color_alt = "f8f9ff"
+    header_font = Font(bold=True, color="FFFFFF", size=10)
+    header_fill = PatternFill("solid", fgColor=color_header)
+    header_align = Alignment(horizontal="center", vertical="center")
+    border = Border(
+        left=Side(style='thin', color='DDDDDD'),
+        right=Side(style='thin', color='DDDDDD'),
+        top=Side(style='thin', color='DDDDDD'),
+        bottom=Side(style='thin', color='DDDDDD'),
+    )
+
+    ws.merge_cells("A1:H1")
+    ws["A1"] = "PyCommerceX - Reporte de Rentabilidad"
+    ws["A1"].font = Font(bold=True, size=14, color=color_header)
+    ws["A1"].alignment = Alignment(horizontal="center")
+
+    ws.merge_cells("A2:H2")
+    ws["A2"] = f"Generado el {timezone.localtime(timezone.now()).strftime('%d/%m/%Y %H:%M')}"
+    ws["A2"].alignment = Alignment(horizontal="center")
+    ws["A2"].font = Font(italic=True, color="888888", size=9)
+
+    total_cost = sum(p.cost_price * p.stock for p in products)
+    total_sale_value = sum(p.sell_price * p.stock for p in products)
+    total_profit = total_sale_value - total_cost
+    overall_margin = (total_profit / total_sale_value * 100) if total_sale_value else 0
+
+    summary = [
+        ("Costo en stock", total_cost),
+        ("Valor de venta", total_sale_value),
+        ("Utilidad potencial", total_profit),
+        ("Margen general", f"{overall_margin:.1f}%"),
+    ]
+    for col, (label, value) in enumerate(summary, 1):
+        header_cell = ws.cell(row=4, column=col, value=label)
+        value_cell = ws.cell(row=5, column=col, value=value)
+        header_cell.font = Font(bold=True, color="FFFFFF")
+        header_cell.fill = header_fill
+        header_cell.alignment = header_align
+        value_cell.alignment = Alignment(horizontal="center")
+        value_cell.font = Font(bold=True)
+
+    headers = [
+        "Codigo",
+        "Producto",
+        "Costo",
+        "Precio venta",
+        "Utilidad und.",
+        "Margen",
+        "Stock",
+        "Utilidad stock",
+    ]
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=7, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_align
+        cell.border = border
+
+    for row_idx, product in enumerate(products, 8):
+        unit_profit = product.sell_price - product.cost_price
+        margin = (unit_profit / product.sell_price * 100) if product.sell_price else 0
+        stock_profit = unit_profit * product.stock
+        fill = PatternFill("solid", fgColor=color_alt) if row_idx % 2 == 0 else None
+        values = [
+            product.code,
+            product.name,
+            product.cost_price,
+            product.sell_price,
+            unit_profit,
+            f"{margin:.1f}%",
+            product.stock,
+            stock_profit,
+        ]
+
+        for col, value in enumerate(values, 1):
+            cell = ws.cell(row=row_idx, column=col, value=value)
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.border = border
+            if fill:
+                cell.fill = fill
+
+        profit_color = "dc2626" if unit_profit < 0 else "16a34a"
+        margin_color = "dc2626" if margin < 0 else "d97706" if margin < 20 else "16a34a"
+        ws.cell(row=row_idx, column=5).font = Font(bold=True, color=profit_color)
+        ws.cell(row=row_idx, column=6).font = Font(bold=True, color=margin_color)
+        ws.cell(row=row_idx, column=8).font = Font(bold=True, color=profit_color)
+
+    widths = [12, 30, 15, 15, 15, 12, 10, 16]
+    for col, width in enumerate(widths, 1):
+        ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = width
+
+    ws.row_dimensions[7].height = 25
+    ws.freeze_panes = "A8"
+
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    response = HttpResponse(
+        buffer,
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response['Content-Disposition'] = 'attachment; filename="reporte_rentabilidad.xlsx"'
+    return response
     

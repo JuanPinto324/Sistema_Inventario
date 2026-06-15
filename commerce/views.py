@@ -19,7 +19,13 @@ from .models import Product, Return, Sale, SaleItem, User, ActivityLog
 from .emails import enviar_confirmacion_compra, enviar_alerta_stock_bajo, enviar_alerta_stock_agotado
 from .activity import registrar
 
-from .reportes import export_ventas_pdf, export_ventas_excel, export_inventario_pdf, export_inventario_excel
+from .reportes import (
+    export_ventas_pdf,
+    export_ventas_excel,
+    export_inventario_pdf,
+    export_inventario_excel,
+    export_rentabilidad_excel,
+)
 
 
 def staff_required(view_func):
@@ -513,6 +519,12 @@ def reporte_inventario_pdf(request):
 def reporte_inventario_excel(request):
     products = Product.objects.filter(is_active=True).order_by("name")
     return export_inventario_excel(list(products))
+
+
+@staff_required
+def reporte_rentabilidad_excel(request):
+    products = Product.objects.filter(is_active=True).order_by("name")
+    return export_rentabilidad_excel(list(products))
 
 
 @staff_required

@@ -128,7 +128,12 @@
                 Compara costo, precio de venta, utilidad por unidad y margen de ganancia.
             </p>
         </div>
-        <span class="badge badge-info">{{ profitability_summary.total_products }} productos activos</span>
+        <div class="flex-gap" style="flex-wrap:wrap">
+            <span class="badge badge-info">{{ profitability_summary.total_products }} productos activos</span>
+            <a href="{% url 'reporte_rentabilidad_excel' %}" class="btn btn-outline btn-sm" style="color:#16a34a;border-color:#16a34a">
+                <i data-lucide="table-2"></i> Excel
+            </a>
+        </div>
     </div>
     <div class="table-wrap">
         <table>
