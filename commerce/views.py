@@ -316,6 +316,11 @@ def sales_index(request):
         start = timezone.make_aware(datetime.combine(start_date, datetime.min.time()))
         end = timezone.make_aware(datetime.combine(end_date, datetime.max.time()))
         sales = sales.filter(created_at__range=(start, end))
+        export_from = start_date.isoformat()
+        export_to = end_date.isoformat()
+    else:
+        export_from = ""
+        export_to = ""
 
     sales = list(sales.select_related("cashier").prefetch_related("items"))
     active_sales = [sale for sale in sales if not sale.is_returned]
@@ -331,6 +336,8 @@ def sales_index(request):
             "filter_type": filter_type,
             "date_from": date_from,
             "date_to": date_to,
+            "export_from": export_from,
+            "export_to": export_to,
         },
     )
 
