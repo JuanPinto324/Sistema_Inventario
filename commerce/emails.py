@@ -1,5 +1,6 @@
 import threading
 import io
+import logging
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
 from django.utils import timezone
@@ -10,6 +11,9 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
 from .models import User
+
+
+logger = logging.getLogger(__name__)
 
 
 def _destinatarios_staff():
@@ -138,7 +142,15 @@ def _generar_pdf_factura(sale):
 
 
 def _enviar_async(subject, html_content, text_content, recipient_list, pdf_bytes=None, pdf_filename=None):
-    """Envía el correo en un hilo separado para no bloquear la petición."""
+    """Envia el correo en un hilo separado para no bloquear la peticion."""
+    recipient_list = [email for email in recipient_list if email]
+    if not recipient_list:
+        logger.warning("Correo no enviado sin destinatarios: %s", subject)
+        return
+    if not settings.DEFAULT_FROM_EMAIL:
+        logger.error("Correo no enviado sin DEFAULT_FROM_EMAIL configurado: %s", subject)
+        return
+
     def _send():
         try:
             msg = EmailMultiAlternatives(
@@ -150,10 +162,12 @@ def _enviar_async(subject, html_content, text_content, recipient_list, pdf_bytes
             msg.attach_alternative(html_content, "text/html")
             if pdf_bytes and pdf_filename:
                 msg.attach(pdf_filename, pdf_bytes, "application/pdf")
-            msg.send(fail_silently=True)
+            sent_count = msg.send(fail_silently=False)
+            logger.info("Correo enviado: %s destinatarios=%s enviados=%s", subject, recipient_list, sent_count)
         except Exception:
-            pass
-    threading.Thread(target=_send, daemon=True).start()
+            logger.exception("Error enviando correo: %s destinatarios=%s", subject, recipient_list)
+
+    threading.Thread(target=_send, daemon=True, name="email-sender").start()
 
 
 def enviar_confirmacion_compra(sale):

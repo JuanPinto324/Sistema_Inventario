@@ -94,11 +94,13 @@ LOGOUT_REDIRECT_URL = "login"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Email con SendGrid
+SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL") or ADMIN_EMAIL
+
+# Email con SendGrid. En local imprime en consola; en Render usa SendGrid si hay API key.
 EMAIL_BACKEND = os.environ.get(
     "EMAIL_BACKEND",
-    "django.core.mail.backends.console.EmailBackend"
+    "sendgrid_backend.SendgridBackend" if SENDGRID_API_KEY else "django.core.mail.backends.console.EmailBackend",
 )
-SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
-DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "")
-ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "")
+EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "15"))
