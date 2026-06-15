@@ -1,4 +1,5 @@
 import json
+import time
 from datetime import datetime, timedelta
 from functools import wraps
 
@@ -14,9 +15,9 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .forms import LoginForm, ProductForm, UserForm
-from .models import Product, Return, Sale, SaleItem, User
-
+from .models import Product, Return, Sale, SaleItem, User, ActivityLog
 from .emails import enviar_confirmacion_compra, enviar_alerta_stock_bajo, enviar_alerta_stock_agotado
+from .activity import registrar
 
 
 def staff_required(view_func):
@@ -27,7 +28,6 @@ def staff_required(view_func):
         if request.user.role not in (User.ROLE_JEFE, User.ROLE_ADMIN):
             return render(request, "403.html", status=403)
         return view_func(request, *args, **kwargs)
-
     return wrapper
 
 
@@ -53,9 +53,7 @@ def login_view(request):
         attempts = request.session.get(cache_key, 0)
         block_time = request.session.get(block_key, None)
 
-        # Verificar si sigue bloqueado
         if block_time:
-            import time
             segundos_restantes = int(block_time - time.time())
             if segundos_restantes > 0:
                 blocked_seconds = segundos_restantes
@@ -69,6 +67,7 @@ def login_view(request):
             request.session[cache_key] = 0
             request.session[block_key] = None
             login(request, user)
+            registrar(user, "login", request=request)
             messages.success(request, f"Bienvenido, {user.full_name}.")
             return redirect(request.GET.get("next") or "home")
 
@@ -77,7 +76,6 @@ def login_view(request):
         restantes = 5 - attempts
 
         if attempts >= 5:
-            import time
             request.session[block_key] = time.time() + 600
             request.session.set_expiry(600)
             blocked_seconds = 600
@@ -89,6 +87,7 @@ def login_view(request):
 
 
 def logout_view(request):
+    registrar(request.user, "logout", request=request)
     logout(request)
     messages.info(request, "Sesion cerrada correctamente.")
     return redirect("login")
@@ -121,6 +120,7 @@ def dashboard(request):
             "alert_products": list(low_stock) + list(out_stock),
         },
     )
+
 
 def _next_product_code():
     used = set()
@@ -165,6 +165,7 @@ def inventory_new(request):
             product = form.save(commit=False)
             product.code = code
             product.save()
+            registrar(request.user, "producto_creado", f"{product.name} ({product.code})", request)
             messages.success(request, f'Producto "{product.name}" registrado exitosamente.')
             return redirect("inventory_index")
     return render(request, "inventory/form.html", {"form": form, "product": None, "action": "Nuevo"})
@@ -177,6 +178,7 @@ def inventory_edit(request, product_id):
     form.fields["code"].disabled = True
     if request.method == "POST" and form.is_valid():
         form.save()
+        registrar(request.user, "producto_editado", f"{product.name} ({product.code})", request)
         messages.success(request, "Producto actualizado.")
         return redirect("inventory_index")
     return render(request, "inventory/form.html", {"form": form, "product": product, "action": "Editar"})
@@ -188,6 +190,7 @@ def inventory_delete(request, product_id):
     product = get_object_or_404(Product, pk=product_id)
     product.is_active = False
     product.save(update_fields=["is_active"])
+    registrar(request.user, "producto_eliminado", f"{product.name} ({product.code})", request)
     messages.warning(request, f'Producto "{product.name}" eliminado.')
     return redirect("inventory_index")
 
@@ -269,8 +272,9 @@ def pos_complete(request):
         )
         product.stock -= quantity
         product.save(update_fields=["stock"])
-    
-    # Enviar correos
+
+    registrar(request.user, "venta", f"Factura {sale.invoice_number} - ${sale.total:,}", request)
+
     enviar_confirmacion_compra(sale)
     for product, quantity, unit_price, subtotal in validated:
         p = Product.objects.get(pk=product.id)
@@ -354,6 +358,7 @@ def sale_return(request, sale_id):
         reason=request.POST.get("reason", "").strip(),
         processed_by=request.user,
     )
+    registrar(request.user, "devolucion", f"Factura {sale.invoice_number}", request)
     messages.success(request, f"Devolucion de la factura {sale.invoice_number} procesada.")
     return redirect("sales_detail", sale_id=sale.id)
 
@@ -379,6 +384,7 @@ def users_new(request):
             messages.error(request, "No tienes permiso para crear usuarios con ese rol.")
         else:
             user = form.save()
+            registrar(request.user, "usuario_creado", user.full_name, request)
             messages.success(request, f'Usuario "{user.full_name}" creado exitosamente.')
             return redirect("users_index")
     return render(request, "users/form.html", {"form": form, "user_obj": None, "action": "Nuevo", "allowed_roles": allowed})
@@ -394,6 +400,7 @@ def users_edit(request, user_id):
     form = UserForm(request.POST or None, instance=user_obj, allowed_roles=allowed)
     if request.method == "POST" and form.is_valid():
         form.save()
+        registrar(request.user, "usuario_editado", user_obj.full_name, request)
         messages.success(request, "Usuario actualizado.")
         return redirect("users_index")
     return render(request, "users/form.html", {"form": form, "user_obj": user_obj, "action": "Editar", "allowed_roles": allowed})
@@ -410,6 +417,7 @@ def users_delete(request, user_id):
     else:
         user_obj.is_active = False
         user_obj.save(update_fields=["is_active"])
+        registrar(request.user, "usuario_eliminado", user_obj.full_name, request)
         messages.warning(request, f'Usuario "{user_obj.full_name}" eliminado.')
     return redirect("users_index")
 
@@ -422,16 +430,41 @@ def cambiar_password(request):
         password_confirmar = request.POST.get("password_confirmar", "").strip()
 
         if not request.user.check_password(password_actual):
-            messages.error(request, "La contraseña actual es incorrecta.")
+            messages.error(request, "La contrasena actual es incorrecta.")
         elif len(password_nuevo) < 6:
-            messages.error(request, "La nueva contraseña debe tener al menos 6 caracteres.")
+            messages.error(request, "La nueva contrasena debe tener al menos 6 caracteres.")
         elif password_nuevo != password_confirmar:
-            messages.error(request, "Las contraseñas nuevas no coinciden.")
+            messages.error(request, "Las contrasenas nuevas no coinciden.")
         else:
             request.user.set_password(password_nuevo)
             request.user.save()
             update_session_auth_hash(request, request.user)
-            messages.success(request, "Contraseña actualizada correctamente.")
+            messages.success(request, "Contrasena actualizada correctamente.")
             return redirect("perfil")
 
     return render(request, "auth/perfil.html")
+
+
+@staff_required
+def activity_log(request):
+    user_filter = request.GET.get("user", "")
+    action_filter = request.GET.get("action", "")
+
+    logs = ActivityLog.objects.select_related("user").all()
+
+    if user_filter:
+        logs = logs.filter(user__id=user_filter)
+    if action_filter:
+        logs = logs.filter(action=action_filter)
+
+    logs = logs[:200]
+    users = User.objects.filter(is_active=True).order_by("full_name")
+
+    return render(request, "users/activity.html", {
+        "logs": logs,
+        "users": users,
+        "user_filter": user_filter,
+        "action_filter": action_filter,
+        "action_choices": ActivityLog.ACTION_CHOICES,
+    })
+    

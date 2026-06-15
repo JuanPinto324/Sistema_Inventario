@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% load commerce_extras %}
+{% block title %}Actividad - PyCommerceX{% endblock %}
+{% block topbar_title %}Registro de Actividad{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <div class="page-title">
+        <span class="icon"><i data-lucide="activity"></i></span>
+        <h1>Registro de Actividad</h1>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="card" style="margin-bottom:24px">
+    <div class="card-body" style="padding:16px 20px">
+        <form method="get" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+            <div>
+                <label style="display:block;font-size:.8rem;font-weight:600;margin-bottom:4px;color:var(--text-muted)">Usuario</label>
+                <select name="user" class="form-control" style="min-width:180px">
+                    <option value="">Todos los usuarios</option>
+                    {% for u in users %}
+                    <option value="{{ u.id }}" {% if user_filter == u.id|stringformat:"s" %}selected{% endif %}>{{ u.full_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label style="display:block;font-size:.8rem;font-weight:600;margin-bottom:4px;color:var(--text-muted)">Accion</label>
+                <select name="action" class="form-control" style="min-width:180px">
+                    <option value="">Todas las acciones</option>
+                    {% for value, label in action_choices %}
+                    <option value="{{ value }}" {% if action_filter == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i data-lucide="filter"></i> Filtrar
+            </button>
+            <a href="{% url 'activity_log' %}" class="btn btn-outline">
+                <i data-lucide="x"></i> Limpiar
+            </a>
+        </form>
+    </div>
+</div>
+
+<!-- Tabla -->
+<div class="card">
+    <div class="card-body" style="padding:0">
+        <table class="table" style="margin:0">
+            <thead>
+                <tr>
+                    <th>Fecha / Hora</th>
+                    <th>Usuario</th>
+                    <th>Rol</th>
+                    <th>Accion</th>
+                    <th>Detalle</th>
+                    <th>IP</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td style="white-space:nowrap;font-size:.85rem;color:var(--text-muted)">
+                        {{ log.created_at|col_time }}
+                    </td>
+                    <td style="font-weight:600">{{ log.user.full_name }}</td>
+                    <td>
+                        <span class="badge" style="
+                            padding:2px 8px;border-radius:12px;font-size:.75rem;font-weight:700;
+                            background:{% if log.user.role == 'jefe' %}rgba(255,215,0,.15){% elif log.user.role == 'administrador' %}rgba(229,62,62,.12){% else %}rgba(113,128,150,.15){% endif %};
+                            color:{% if log.user.role == 'jefe' %}#9a7400{% elif log.user.role == 'administrador' %}#b91c1c{% else %}#475569{% endif %}">
+                            {{ log.user.role_label }}
+                        </span>
+                    </td>
+                    <td>
+                        <span style="display:inline-flex;align-items:center;gap:6px;font-size:.85rem;font-weight:600;
+                            color:{% if log.action == 'login' %}#16a34a{% elif log.action == 'logout' %}#6b7280{% elif log.action == 'venta' %}#2563eb{% elif log.action == 'devolucion' %}#d97706{% elif log.action == 'producto_eliminado' or log.action == 'usuario_eliminado' %}#dc2626{% else %}#7c3aed{% endif %}">
+                            <i data-lucide="{% if log.action == 'login' %}log-in{% elif log.action == 'logout' %}log-out{% elif log.action == 'venta' %}shopping-cart{% elif log.action == 'devolucion' %}rotate-ccw{% elif log.action == 'producto_creado' or log.action == 'usuario_creado' %}plus-circle{% elif log.action == 'producto_editado' or log.action == 'usuario_editado' %}pencil{% else %}trash-2{% endif %}" style="width:14px;height:14px"></i>
+                            {{ log.get_action_display }}
+                        </span>
+                    </td>
+                    <td style="font-size:.85rem;color:var(--text-muted)">{{ log.detail|default:"-" }}</td>
+                    <td style="font-size:.8rem;color:var(--text-muted)">{{ log.ip|default:"-" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted)">
+                        <i data-lucide="inbox" style="width:32px;height:32px;margin-bottom:8px;display:block;margin-left:auto;margin-right:auto"></i>
+                        No hay registros de actividad.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

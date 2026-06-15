@@ -113,3 +113,41 @@ class Return(models.Model):
 
     def __str__(self):
         return f"Devolucion {self.sale.invoice_number}"
+
+class ActivityLog(models.Model):
+    ACTION_LOGIN = "login"
+    ACTION_LOGOUT = "logout"
+    ACTION_SALE = "venta"
+    ACTION_RETURN = "devolucion"
+    ACTION_PRODUCT_CREATE = "producto_creado"
+    ACTION_PRODUCT_EDIT = "producto_editado"
+    ACTION_PRODUCT_DELETE = "producto_eliminado"
+    ACTION_USER_CREATE = "usuario_creado"
+    ACTION_USER_EDIT = "usuario_editado"
+    ACTION_USER_DELETE = "usuario_eliminado"
+
+    ACTION_CHOICES = [
+        (ACTION_LOGIN, "Inicio de sesion"),
+        (ACTION_LOGOUT, "Cierre de sesion"),
+        (ACTION_SALE, "Venta realizada"),
+        (ACTION_RETURN, "Devolucion procesada"),
+        (ACTION_PRODUCT_CREATE, "Producto creado"),
+        (ACTION_PRODUCT_EDIT, "Producto editado"),
+        (ACTION_PRODUCT_DELETE, "Producto eliminado"),
+        (ACTION_USER_CREATE, "Usuario creado"),
+        (ACTION_USER_EDIT, "Usuario editado"),
+        (ACTION_USER_DELETE, "Usuario eliminado"),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="activity_logs")
+    action = models.CharField(max_length=30, choices=ACTION_CHOICES)
+    detail = models.CharField(max_length=255, blank=True)
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user.full_name} - {self.get_action_display()} - {self.created_at}"
+        
