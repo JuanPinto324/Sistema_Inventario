@@ -133,7 +133,7 @@ def dashboard(request):
 
 def _next_product_code():
     used = set()
-    for code in Product.objects.filter(code__startswith="PROD-").values_list("code", flat=True):
+    for code in Product.objects.filter(is_active=True, code__startswith="PROD-").values_list("code", flat=True):
         try:
             used.add(int(code.split("-")[1]))
         except (IndexError, ValueError):
@@ -232,8 +232,15 @@ def pos_index(request):
 
 
 def _next_invoice():
-    last = Sale.objects.order_by("-id").first()
-    number = (last.id + 1) if last else 1
+    used = set()
+    for invoice in Sale.objects.filter(invoice_number__startswith="FAC-").values_list("invoice_number", flat=True):
+        try:
+            used.add(int(invoice.split("-")[1]))
+        except (IndexError, ValueError):
+            continue
+    number = 1
+    while number in used:
+        number += 1
     return f"FAC-{number:06d}"
 
 
