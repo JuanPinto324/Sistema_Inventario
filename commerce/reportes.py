@@ -10,6 +10,30 @@ from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
+BRAND_NAME = "Agroveterinaria Planeta Animal"
+BRAND_DARK = colors.HexColor("#144115")
+BRAND_GREEN = colors.HexColor("#39701B")
+BRAND_SOFT = colors.HexColor("#F4F8F1")
+BRAND_TEXT = colors.HexColor("#526452")
+
+
+def _pdf_footer(canvas, doc):
+    page_width, _ = doc.pagesize
+    canvas.saveState()
+    canvas.setStrokeColor(BRAND_GREEN)
+    canvas.setLineWidth(0.4)
+    canvas.line(doc.leftMargin, 1.12 * cm, page_width - doc.rightMargin, 1.12 * cm)
+    canvas.setFillColor(BRAND_TEXT)
+    canvas.setFont("Helvetica", 7.5)
+    canvas.drawString(doc.leftMargin, 0.72 * cm, BRAND_NAME + " · Reporte generado por el sistema")
+    canvas.drawRightString(
+        page_width - doc.rightMargin,
+        0.72 * cm,
+        f"Página {canvas.getPageNumber()}",
+    )
+    canvas.restoreState()
+
+
 
 # ─── VENTAS PDF ───────────────────────────────────────────────────────────────
 
@@ -21,14 +45,14 @@ def export_ventas_pdf(sales, fecha_desde=None, fecha_hasta=None):
 
     styles = getSampleStyleSheet()
     estilo_titulo = ParagraphStyle('titulo', parent=styles['Normal'],
-                                   fontSize=16, fontName='Helvetica-Bold', alignment=TA_CENTER)
+                                   fontSize=17, leading=21, fontName='Helvetica-Bold', textColor=BRAND_DARK, alignment=TA_CENTER)
     estilo_sub = ParagraphStyle('sub', parent=styles['Normal'],
-                                fontSize=9, textColor=colors.grey, alignment=TA_CENTER)
+                                fontSize=9, leading=13, textColor=BRAND_TEXT, alignment=TA_CENTER)
     estilo_center = ParagraphStyle('center', parent=styles['Normal'], alignment=TA_CENTER, fontSize=9)
 
     elementos = []
 
-    elementos.append(Paragraph("PyCommerceX", estilo_titulo))
+    elementos.append(Paragraph("Agroveterinaria Planeta Animal", estilo_titulo))
     elementos.append(Paragraph("Reporte de Ventas", estilo_sub))
 
     if fecha_desde and fecha_hasta:
@@ -39,7 +63,7 @@ def export_ventas_pdf(sales, fecha_desde=None, fecha_hasta=None):
             f"Generado el {timezone.localtime(timezone.now()).strftime('%d/%m/%Y %H:%M')}", estilo_sub))
 
     elementos.append(Spacer(1, 0.4*cm))
-    elementos.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#1a1a2e')))
+    elementos.append(HRFlowable(width="100%", thickness=1, color=BRAND_DARK))
     elementos.append(Spacer(1, 0.4*cm))
 
     # Resumen
@@ -54,7 +78,7 @@ def export_ventas_pdf(sales, fecha_desde=None, fecha_hasta=None):
     tabla_resumen.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a1a2e')),
+        ('BACKGROUND', (0, 0), (-1, 0), BRAND_DARK),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('GRID', (0, 0), (-1, -1), 0.3, colors.lightgrey),
@@ -81,17 +105,17 @@ def export_ventas_pdf(sales, fecha_desde=None, fecha_hasta=None):
     tabla.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, -1), 8),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a1a2e')),
+        ('BACKGROUND', (0, 0), (-1, 0), BRAND_DARK),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('GRID', (0, 0), (-1, -1), 0.3, colors.lightgrey),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9ff')]),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, BRAND_SOFT]),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
     ]))
     elementos.append(tabla)
 
-    doc.build(elementos)
+    doc.build(elementos, onFirstPage=_pdf_footer, onLaterPages=_pdf_footer)
     buffer.seek(0)
     response = HttpResponse(buffer, content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="reporte_ventas.pdf"'
@@ -105,8 +129,8 @@ def export_ventas_excel(sales, fecha_desde=None, fecha_hasta=None):
     ws = wb.active
     ws.title = "Ventas"
 
-    color_header = "1a1a2e"
-    color_alt = "f8f9ff"
+    color_header = "144115"
+    color_alt = "F4F8F1"
 
     header_font = Font(bold=True, color="FFFFFF", size=10)
     header_fill = PatternFill("solid", fgColor=color_header)
@@ -120,7 +144,7 @@ def export_ventas_excel(sales, fecha_desde=None, fecha_hasta=None):
 
     # Titulo
     ws.merge_cells("A1:G1")
-    ws["A1"] = "PyCommerceX - Reporte de Ventas"
+    ws["A1"] = "Agroveterinaria Planeta Animal - Reporte de Ventas"
     ws["A1"].font = Font(bold=True, size=14, color=color_header)
     ws["A1"].alignment = Alignment(horizontal="center")
 
@@ -201,17 +225,17 @@ def export_inventario_pdf(products):
 
     styles = getSampleStyleSheet()
     estilo_titulo = ParagraphStyle('titulo', parent=styles['Normal'],
-                                   fontSize=16, fontName='Helvetica-Bold', alignment=TA_CENTER)
+                                   fontSize=17, leading=21, fontName='Helvetica-Bold', textColor=BRAND_DARK, alignment=TA_CENTER)
     estilo_sub = ParagraphStyle('sub', parent=styles['Normal'],
-                                fontSize=9, textColor=colors.grey, alignment=TA_CENTER)
+                                fontSize=9, leading=13, textColor=BRAND_TEXT, alignment=TA_CENTER)
 
     elementos = []
-    elementos.append(Paragraph("PyCommerceX", estilo_titulo))
+    elementos.append(Paragraph("Agroveterinaria Planeta Animal", estilo_titulo))
     elementos.append(Paragraph("Reporte de Inventario", estilo_sub))
     elementos.append(Paragraph(
         f"Generado el {timezone.localtime(timezone.now()).strftime('%d/%m/%Y %H:%M')}", estilo_sub))
     elementos.append(Spacer(1, 0.4*cm))
-    elementos.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#1a1a2e')))
+    elementos.append(HRFlowable(width="100%", thickness=1, color=BRAND_DARK))
     elementos.append(Spacer(1, 0.4*cm))
 
     datos = [["Codigo", "Producto", "Costo", "Precio Venta", "Stock", "Stock Min.", "Estado"]]
@@ -237,18 +261,18 @@ def export_inventario_pdf(products):
     tabla.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, -1), 8),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a1a2e')),
+        ('BACKGROUND', (0, 0), (-1, 0), BRAND_DARK),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('ALIGN', (1, 1), (1, -1), 'LEFT'),
         ('GRID', (0, 0), (-1, -1), 0.3, colors.lightgrey),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9ff')]),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, BRAND_SOFT]),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
     ]))
     elementos.append(tabla)
 
-    doc.build(elementos)
+    doc.build(elementos, onFirstPage=_pdf_footer, onLaterPages=_pdf_footer)
     buffer.seek(0)
     response = HttpResponse(buffer, content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="reporte_inventario.pdf"'
@@ -262,8 +286,8 @@ def export_inventario_excel(products):
     ws = wb.active
     ws.title = "Inventario"
 
-    color_header = "1a1a2e"
-    color_alt = "f8f9ff"
+    color_header = "144115"
+    color_alt = "F4F8F1"
     header_font = Font(bold=True, color="FFFFFF", size=10)
     header_fill = PatternFill("solid", fgColor=color_header)
     header_align = Alignment(horizontal="center", vertical="center")
@@ -275,7 +299,7 @@ def export_inventario_excel(products):
     )
 
     ws.merge_cells("A1:G1")
-    ws["A1"] = "PyCommerceX - Reporte de Inventario"
+    ws["A1"] = "Agroveterinaria Planeta Animal - Reporte de Inventario"
     ws["A1"].font = Font(bold=True, size=14, color=color_header)
     ws["A1"].alignment = Alignment(horizontal="center")
 
@@ -335,8 +359,8 @@ def export_rentabilidad_excel(products):
     ws = wb.active
     ws.title = "Rentabilidad"
 
-    color_header = "1a1a2e"
-    color_alt = "f8f9ff"
+    color_header = "144115"
+    color_alt = "F4F8F1"
     header_font = Font(bold=True, color="FFFFFF", size=10)
     header_fill = PatternFill("solid", fgColor=color_header)
     header_align = Alignment(horizontal="center", vertical="center")
@@ -348,7 +372,7 @@ def export_rentabilidad_excel(products):
     )
 
     ws.merge_cells("A1:H1")
-    ws["A1"] = "PyCommerceX - Reporte de Rentabilidad"
+    ws["A1"] = "Agroveterinaria Planeta Animal - Reporte de Rentabilidad"
     ws["A1"].font = Font(bold=True, size=14, color=color_header)
     ws["A1"].alignment = Alignment(horizontal="center")
 
@@ -449,9 +473,9 @@ def export_rentabilidad_pdf(products):
 
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle('titulo_rentabilidad', parent=styles['Normal'],
-                                 fontSize=16, fontName='Helvetica-Bold', alignment=TA_CENTER)
+                                 fontSize=17, leading=21, fontName='Helvetica-Bold', textColor=BRAND_DARK, alignment=TA_CENTER)
     subtitle_style = ParagraphStyle('sub_rentabilidad', parent=styles['Normal'],
-                                    fontSize=9, textColor=colors.grey, alignment=TA_CENTER)
+                                    fontSize=9, leading=13, textColor=BRAND_TEXT, alignment=TA_CENTER)
 
     total_cost = sum(p.cost_price * p.stock for p in products)
     total_sale_value = sum(p.sell_price * p.stock for p in products)
@@ -459,14 +483,14 @@ def export_rentabilidad_pdf(products):
     overall_margin = (total_profit / total_sale_value * 100) if total_sale_value else 0
 
     elements = [
-        Paragraph("PyCommerceX", title_style),
+        Paragraph("Agroveterinaria Planeta Animal", title_style),
         Paragraph("Reporte de Rentabilidad", subtitle_style),
         Paragraph(
             f"Generado el {timezone.localtime(timezone.now()).strftime('%d/%m/%Y %H:%M')}",
             subtitle_style,
         ),
         Spacer(1, 0.4*cm),
-        HRFlowable(width="100%", thickness=1, color=colors.HexColor('#1a1a2e')),
+        HRFlowable(width="100%", thickness=1, color=BRAND_DARK),
         Spacer(1, 0.4*cm),
     ]
 
@@ -483,7 +507,7 @@ def export_rentabilidad_pdf(products):
     summary_table.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a1a2e')),
+        ('BACKGROUND', (0, 0), (-1, 0), BRAND_DARK),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('GRID', (0, 0), (-1, -1), 0.3, colors.lightgrey),
@@ -513,18 +537,18 @@ def export_rentabilidad_pdf(products):
     table.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, -1), 7.5),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a1a2e')),
+        ('BACKGROUND', (0, 0), (-1, 0), BRAND_DARK),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('ALIGN', (1, 1), (1, -1), 'LEFT'),
         ('GRID', (0, 0), (-1, -1), 0.3, colors.lightgrey),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9ff')]),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, BRAND_SOFT]),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
     ]))
     elements.append(table)
 
-    doc.build(elements)
+    doc.build(elements, onFirstPage=_pdf_footer, onLaterPages=_pdf_footer)
     buffer.seek(0)
     response = HttpResponse(buffer, content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="reporte_rentabilidad.pdf"'

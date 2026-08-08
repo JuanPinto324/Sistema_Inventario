@@ -136,7 +136,7 @@ def dashboard(request):
 
 def _next_product_code():
     used = set()
-    for code in Product.objects.filter(is_active=True, code__startswith="PROD-").values_list("code", flat=True):
+    for code in Product.objects.filter(code__startswith="PROD-").values_list("code", flat=True):
         try:
             used.add(int(code.split("-")[1]))
         except (IndexError, ValueError):
@@ -160,27 +160,64 @@ def inventory_index(request):
 def inventory_new(request):
     initial = {"code": _next_product_code(), "stock": 0, "min_stock": 5}
     form = ProductForm(request.POST or None, initial=initial)
+
     if request.method == "POST" and form.is_valid():
         code = form.cleaned_data["code"].upper().strip()
         inactive = Product.objects.filter(code=code, is_active=False).first()
+
         if inactive:
-            for field, value in form.cleaned_data.items():
-                setattr(inactive, field, value)
-            inactive.code = code
-            inactive.is_active = True
-            inactive.save()
-            messages.success(request, f'Producto "{inactive.name}" restaurado exitosamente.')
-            return redirect("inventory_index")
-        if Product.objects.filter(code=code, is_active=True).exists():
-            messages.error(request, "Ya existe un producto con ese codigo.")
+            if inactive.sale_items.exists():
+                form.add_error(
+                    "code",
+                    "Este código pertenece a un producto archivado con ventas registradas "
+                    "y no se puede reutilizar.",
+                )
+            else:
+                for field, value in form.cleaned_data.items():
+                    setattr(inactive, field, value)
+                inactive.code = code
+                inactive.is_active = True
+                inactive.save()
+
+                registrar(
+                    request.user,
+                    "producto_editado",
+                    f"{inactive.name} ({inactive.code}) restaurado",
+                    request,
+                )
+                messages.success(
+                    request,
+                    f'Producto "{inactive.name}" restaurado y actualizado correctamente.',
+                )
+                return redirect("inventory_index")
+
+        elif Product.objects.filter(code=code, is_active=True).exists():
+            form.add_error(
+                "code",
+                "Ya existe un producto activo con este código. Usa otro código o edítalo.",
+            )
+
         else:
             product = form.save(commit=False)
             product.code = code
             product.save()
-            registrar(request.user, "producto_creado", f"{product.name} ({product.code})", request)
-            messages.success(request, f'Producto "{product.name}" registrado exitosamente.')
+            registrar(
+                request.user,
+                "producto_creado",
+                f"{product.name} ({product.code})",
+                request,
+            )
+            messages.success(
+                request,
+                f'Producto "{product.name}" registrado correctamente.',
+            )
             return redirect("inventory_index")
-    return render(request, "inventory/form.html", {"form": form, "product": None, "action": "Nuevo"})
+
+    return render(
+        request,
+        "inventory/form.html",
+        {"form": form, "product": None, "action": "Nuevo"},
+    )
 
 
 @staff_required
@@ -196,14 +233,40 @@ def inventory_edit(request, product_id):
     return render(request, "inventory/form.html", {"form": form, "product": product, "action": "Editar"})
 
 
+
 @require_POST
 @staff_required
 def inventory_delete(request, product_id):
     product = get_object_or_404(Product, pk=product_id)
-    product.is_active = False
-    product.save(update_fields=["is_active"])
-    registrar(request.user, "producto_eliminado", f"{product.name} ({product.code})", request)
-    messages.warning(request, f'Producto "{product.name}" eliminado.')
+    product_name = product.name
+    product_code = product.code
+
+    if product.sale_items.exists():
+        product.is_active = False
+        product.save(update_fields=["is_active"])
+        registrar(
+            request.user,
+            "producto_eliminado",
+            f"{product_name} ({product_code}) archivado por historial de ventas",
+            request,
+        )
+        messages.warning(
+            request,
+            f'El producto "{product_name}" fue archivado porque tiene ventas registradas.',
+        )
+    else:
+        product.delete()
+        registrar(
+            request.user,
+            "producto_eliminado",
+            f"{product_name} ({product_code}) eliminado definitivamente",
+            request,
+        )
+        messages.success(
+            request,
+            f'Producto "{product_name}" eliminado. El código {product_code} quedó disponible.',
+        )
+
     return redirect("inventory_index")
 
 

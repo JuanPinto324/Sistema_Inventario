@@ -31,6 +31,11 @@ class ProductForm(forms.ModelForm):
     def clean_name(self):
         return " ".join(self.cleaned_data["name"].split())
 
+    def validate_unique(self):
+        # La vista decide si un código inactivo se restaura o si un código
+        # activo debe mostrar un mensaje claro al usuario.
+        return
+
 
 class UserForm(forms.ModelForm):
     password = forms.CharField(widget=forms.PasswordInput, required=False)
