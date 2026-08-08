@@ -1,4 +1,5 @@
 import json
+import re
 import time
 from datetime import datetime, timedelta
 from functools import wraps
@@ -13,6 +14,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 
 from .forms import LoginForm, ProductForm, UserForm
 from .models import Product, Return, Sale, SaleItem, User, ActivityLog
@@ -248,23 +251,116 @@ def _next_invoice():
 @login_required
 @transaction.atomic
 def pos_complete(request):
-    data = json.loads(request.body.decode("utf-8"))
-    customer_id = data.get("customer_id", "").strip()
-    customer_name = data.get("customer_name", "").strip()
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return JsonResponse(
+            {"ok": False, "msg": "La solicitud de venta no es válida."},
+            status=400,
+        )
+
+    if not isinstance(data, dict):
+        return JsonResponse(
+            {"ok": False, "msg": "La solicitud de venta no es válida."},
+            status=400,
+        )
+
+    customer_id = str(data.get("customer_id", "")).strip()
+    customer_name = str(data.get("customer_name", "")).strip()
+    customer_phone = str(data.get("customer_phone", "")).strip()
+    customer_email = str(data.get("customer_email", "")).strip()
     items = data.get("items", [])
 
-    if not customer_id or not customer_name:
-        return JsonResponse({"ok": False, "msg": "Datos del cliente incompletos."}, status=400)
-    if not items:
-        return JsonResponse({"ok": False, "msg": "El carrito esta vacio."}, status=400)
+    name_pattern = re.compile(
+        r"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+(?:[ '\-][A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+)*$"
+    )
+
+    if not re.fullmatch(r"\d{5,30}", customer_id):
+        return JsonResponse(
+            {"ok": False, "msg": "La identificación debe contener entre 5 y 30 dígitos."},
+            status=400,
+        )
+
+    if len(customer_name) > 120 or not name_pattern.fullmatch(customer_name):
+        return JsonResponse(
+            {
+                "ok": False,
+                "msg": "El nombre solo puede contener letras, espacios, guiones y apóstrofes.",
+            },
+            status=400,
+        )
+
+    if customer_phone and not re.fullmatch(r"\d{7,20}", customer_phone):
+        return JsonResponse(
+            {"ok": False, "msg": "El teléfono debe contener entre 7 y 20 dígitos."},
+            status=400,
+        )
+
+    if customer_email:
+        if len(customer_email) > 120:
+            return JsonResponse(
+                {"ok": False, "msg": "El correo electrónico es demasiado largo."},
+                status=400,
+            )
+        try:
+            validate_email(customer_email)
+        except ValidationError:
+            return JsonResponse(
+                {"ok": False, "msg": "El correo electrónico no es válido."},
+                status=400,
+            )
+
+    if not isinstance(items, list) or not items:
+        return JsonResponse(
+            {"ok": False, "msg": "El carrito está vacío."},
+            status=400,
+        )
+
+    requested_quantities = {}
+    for item in items:
+        if not isinstance(item, dict):
+            return JsonResponse(
+                {"ok": False, "msg": "Hay un producto inválido en el carrito."},
+                status=400,
+            )
+        try:
+            product_id = int(item.get("product_id"))
+            quantity = int(item.get("quantity"))
+        except (TypeError, ValueError):
+            return JsonResponse(
+                {"ok": False, "msg": "La cantidad de un producto no es válida."},
+                status=400,
+            )
+
+        if product_id <= 0 or quantity <= 0:
+            return JsonResponse(
+                {"ok": False, "msg": "La cantidad de cada producto debe ser mayor que cero."},
+                status=400,
+            )
+
+        requested_quantities[product_id] = (
+            requested_quantities.get(product_id, 0) + quantity
+        )
 
     validated = []
     total = 0
-    for item in items:
-        product = Product.objects.select_for_update().get(pk=item["product_id"])
-        quantity = int(item["quantity"])
+    for product_id, quantity in requested_quantities.items():
+        product = (
+            Product.objects.select_for_update()
+            .filter(pk=product_id, is_active=True)
+            .first()
+        )
+        if not product:
+            return JsonResponse(
+                {"ok": False, "msg": "Uno de los productos ya no está disponible."},
+                status=400,
+            )
         if product.stock < quantity:
-            return JsonResponse({"ok": False, "msg": f"Stock insuficiente para {product.name}."}, status=400)
+            return JsonResponse(
+                {"ok": False, "msg": f"Stock insuficiente para {product.name}."},
+                status=400,
+            )
+
         subtotal = product.sell_price * quantity
         total += subtotal
         validated.append((product, quantity, product.sell_price, subtotal))
@@ -273,11 +369,12 @@ def pos_complete(request):
         invoice_number=_next_invoice(),
         customer_id=customer_id,
         customer_name=customer_name,
-        customer_phone=data.get("customer_phone", "").strip(),
-        customer_email=data.get("customer_email", "").strip(),
+        customer_phone=customer_phone,
+        customer_email=customer_email,
         total=total,
         cashier=request.user,
     )
+
     for product, quantity, unit_price, subtotal in validated:
         SaleItem.objects.create(
             sale=sale,
@@ -293,13 +390,14 @@ def pos_complete(request):
 
     enviar_confirmacion_compra(sale)
     for product, quantity, unit_price, subtotal in validated:
-        p = Product.objects.get(pk=product.id)
-        if p.stock == 0:
-            enviar_alerta_stock_agotado(p)
-        elif p.stock <= p.min_stock:
-            enviar_alerta_stock_bajo(p)
+        if product.stock == 0:
+            enviar_alerta_stock_agotado(product)
+        elif product.stock <= product.min_stock:
+            enviar_alerta_stock_bajo(product)
 
-    return JsonResponse({"ok": True, "sale_id": sale.id, "invoice": sale.invoice_number})
+    return JsonResponse(
+        {"ok": True, "sale_id": sale.id, "invoice": sale.invoice_number}
+    )
 
 
 @login_required
