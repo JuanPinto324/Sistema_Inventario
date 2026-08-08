@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}PyCommerceX{% endblock %}</title>
+  <title>{% block title %}Agroveterinaria Planeta Animal{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'css/main.css' %}">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
   {% block extra_head %}{% endblock %}
@@ -13,8 +13,13 @@
 <div class="wrapper">
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
-      <div class="logo-icon"><i data-lucide="shopping-cart"></i></div>
-      <div><span>PyCommerceX</span><small class="brand-subtitle">Inventario y ventas</small></div>
+      <div class="logo-icon">
+        <img src="{% static 'img/logo.jpeg' %}" alt="Logo de Planeta Animal">
+      </div>
+      <div>
+        <span>Planeta Animal</span>
+        <small class="brand-subtitle">Agroveterinaria</small>
+      </div>
     </div>
     <nav class="sidebar-nav">
       {% if request.user.is_staff_member %}

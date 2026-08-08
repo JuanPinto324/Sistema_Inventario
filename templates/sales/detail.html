@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% load commerce_extras %}
-{% block title %}Venta {{ sale.invoice_number }} - PyCommerceX{% endblock %}
+{% block title %}Venta {{ sale.invoice_number }} - Agroveterinaria Planeta Animal{% endblock %}
 {% block topbar_title %}Detalle de Venta{% endblock %}
 {% block content %}
 <div class="page-header"><div class="page-title"><span class="icon"><i data-lucide="receipt-text"></i></span><h1>{{ sale.invoice_number }}</h1></div><div class="flex-gap">{% if not sale.is_returned %}<button onclick="document.getElementById('returnModal').classList.add('show')" class="btn btn-danger"><i data-lucide="rotate-ccw"></i> Registrar Devolucion</button>{% endif %}<a href="{% url 'sales_index' %}" class="btn btn-outline"><i data-lucide="arrow-left"></i> Volver</a></div></div>

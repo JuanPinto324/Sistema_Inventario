@@ -4,92 +4,206 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PyCommerceX - Iniciar Sesion</title>
+  <title>Planeta Animal - Iniciar sesión</title>
   <link rel="stylesheet" href="{% static 'css/main.css' %}">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
   <style>
-    body { min-height:100vh; display:grid; place-items:center; padding:24px; background:linear-gradient(135deg, rgba(16,24,39,.94), rgba(23,34,54,.78)), #101827; }
-    .login-shell { width:100%; max-width:920px; display:grid; grid-template-columns:1fr 420px; overflow:hidden; border:1px solid rgba(255,255,255,.16); border-radius:18px; background:rgba(255,255,255,.96); box-shadow:0 30px 90px rgba(0,0,0,.34); }
-    .login-aside { display:flex; flex-direction:column; justify-content:space-between; min-height:560px; padding:36px; color:#fff; background:linear-gradient(180deg,#111827,#172236); }
-    .login-brand { display:flex; align-items:center; gap:12px; }
-    .login-brand h1,.login-copy h2 { color:#fff; }
-    .login-copy h2 { max-width:360px; font-size:2rem; }
-    .login-copy p { max-width:360px; margin-top:12px; color:#aebbd0; }
-    .login-metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
-    .login-metric { padding:14px; border-radius:var(--radius); background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.10); }
-    .login-metric strong { display:block; color:#fff; }
-    .login-metric span { color:#9fb0c8; font-size:.74rem; }
-    .login-panel { padding:40px 34px; align-self:center; }
-    .login-panel > p { margin:6px 0 24px; color:var(--text-muted); }
-    .input-with-icon { position:relative; }
-    .input-with-icon svg { position:absolute; left:12px; top:50%; width:18px; height:18px; color:var(--text-muted); transform:translateY(-50%); }
-    .input-with-icon .form-control { padding-left:40px; }
-    .roles-info { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:22px; }
-    .role-chip { padding:5px 10px; border-radius:999px; font-size:.72rem; font-weight:800; }
-    @media (max-width:860px){ .login-shell{grid-template-columns:1fr;max-width:440px}.login-aside{min-height:auto;padding:28px;gap:28px}.login-copy h2{font-size:1.45rem}.login-metrics{display:none} }
+    body {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background:
+        radial-gradient(circle at top left, rgba(57, 112, 27, .24), transparent 34rem),
+        linear-gradient(135deg, #0c2f0d, #144115);
+    }
+    .login-shell {
+      width: 100%;
+      max-width: 960px;
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, .18);
+      border-radius: 20px;
+      background: rgba(255, 255, 255, .98);
+      box-shadow: 0 30px 90px rgba(0, 0, 0, .34);
+    }
+    .login-aside {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 560px;
+      padding: 38px;
+      color: #fff;
+      background: linear-gradient(180deg, #144115, #0c2f0d);
+    }
+    .login-brand { display: flex; align-items: center; gap: 13px; }
+    .login-logo {
+      width: 54px;
+      height: 54px;
+      overflow: hidden;
+      flex: 0 0 auto;
+      border: 2px solid rgba(255, 255, 255, .8);
+      border-radius: 50%;
+      background: #fff;
+    }
+    .login-logo img { width: 100%; height: 100%; display: block; object-fit: cover; }
+    .login-brand h1, .login-copy h2 { color: #fff; }
+    .login-brand h1 { font-size: 1.3rem; }
+    .login-copy h2 { max-width: 390px; font-size: 2rem; }
+    .login-copy p { max-width: 370px; margin-top: 12px; color: #c6dfc0; }
+    .login-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .login-metric {
+      padding: 14px;
+      border: 1px solid rgba(255, 255, 255, .14);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, .09);
+    }
+    .login-metric strong { display: block; color: #fff; }
+    .login-metric span { color: #c6dfc0; font-size: .74rem; }
+    .login-panel { padding: 40px 34px; align-self: center; }
+    .login-panel > p { margin: 6px 0 24px; color: var(--text-muted); }
+    .input-with-icon { position: relative; }
+    .input-with-icon > svg {
+      position: absolute;
+      top: 50%;
+      left: 12px;
+      width: 18px;
+      height: 18px;
+      color: var(--text-muted);
+      transform: translateY(-50%);
+    }
+    .input-with-icon .form-control { padding-left: 40px; }
+    .password-toggle {
+      position: absolute;
+      top: 50%;
+      right: 8px;
+      display: inline-flex;
+      padding: 7px;
+      border: 0;
+      border-radius: 6px;
+      color: var(--text-muted);
+      background: transparent;
+      cursor: pointer;
+      transform: translateY(-50%);
+    }
+    .password-toggle:hover { color: var(--accent); background: var(--accent-soft); }
+    .roles-info { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 22px; }
+    .role-chip { padding: 5px 10px; border-radius: 999px; font-size: .72rem; font-weight: 800; }
+    @media (max-width: 860px) {
+      .login-shell { grid-template-columns: 1fr; max-width: 440px; }
+      .login-aside { min-height: auto; padding: 28px; gap: 28px; }
+      .login-copy h2 { font-size: 1.45rem; }
+      .login-metrics { display: none; }
+    }
   </style>
 </head>
 <body>
 <div class="login-shell">
   <section class="login-aside">
     <div class="login-brand">
-      <div class="logo-icon"><i data-lucide="shopping-cart"></i></div>
-      <div><h1>PyCommerceX</h1><small class="brand-subtitle">Sistema de Gestion Comercial</small></div>
+      <div class="login-logo">
+        <img src="{% static 'img/logo.jpeg' %}" alt="Logo de Planeta Animal">
+      </div>
+      <div>
+        <h1>Planeta Animal</h1>
+        <small class="brand-subtitle">Agroveterinaria</small>
+      </div>
     </div>
+
     <div class="login-copy">
-      <h2>Controla inventario, caja y ventas desde un solo panel.</h2>
-      <p>Acceso local para jefes, administradores y cajeros.</p>
+      <h2>Todo para la salud y el cuidado de tus animales.</h2>
+      <p>Gestiona ventas, inventario y caja para mascotas y animales de producción.</p>
     </div>
+
     <div class="login-metrics">
-      <div class="login-metric"><strong>Ventas</strong><span>POS rapido</span></div>
-      <div class="login-metric"><strong>Stock</strong><span>Alertas claras</span></div>
-      <div class="login-metric"><strong>Roles</strong><span>Permisos</span></div>
+      <div class="login-metric"><strong>Ventas</strong><span>POS ágil</span></div>
+      <div class="login-metric"><strong>Inventario</strong><span>Stock al día</span></div>
+      <div class="login-metric"><strong>Equipo</strong><span>Roles seguros</span></div>
     </div>
   </section>
+
   <section class="login-panel">
-    <h2>Iniciar sesion</h2>
+    <h2>Iniciar sesión</h2>
     <p>Ingresa tus datos para continuar.</p>
-    {% for message in messages %}<div class="alert alert-{{ message.tags }}">{{ message }}</div>{% endfor %}
+
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
 
     {% if blocked_seconds > 0 %}
     <div class="alert alert-error" id="bloqueo-alert" style="text-align:center">
-        <strong>Cuenta bloqueada.</strong> Intenta de nuevo en <span id="countdown" style="font-weight:800;font-size:1.1rem"></span>
+      <strong>Cuenta bloqueada.</strong> Intenta de nuevo en
+      <span id="countdown" style="font-weight:800;font-size:1.1rem"></span>
     </div>
     <script>
-        (function(){
-            var seconds = {{ blocked_seconds }};
-            var el = document.getElementById('countdown');
-            var alert = document.getElementById('bloqueo-alert');
-            function update(){
-                if(seconds <= 0){
-                    alert.innerHTML = 'Ya puedes intentar de nuevo.';
-                    alert.style.background = '#d1fae5';
-                    alert.style.color = '#065f46';
-                    return;
-                }
-                var m = Math.floor(seconds / 60);
-                var s = seconds % 60;
-                el.textContent = (m > 0 ? m + 'm ' : '') + s + 's';
-                seconds--;
-                setTimeout(update, 1000);
-            }
-            update();
-        })();
+      (function () {
+        var seconds = {{ blocked_seconds }};
+        var el = document.getElementById('countdown');
+        var alert = document.getElementById('bloqueo-alert');
+        function update() {
+          if (seconds <= 0) {
+            alert.innerHTML = 'Ya puedes intentar de nuevo.';
+            alert.style.background = '#d1fae5';
+            alert.style.color = '#065f46';
+            return;
+          }
+          var minutes = Math.floor(seconds / 60);
+          var remaining = seconds % 60;
+          el.textContent = (minutes > 0 ? minutes + 'm ' : '') + remaining + 's';
+          seconds--;
+          setTimeout(update, 1000);
+        }
+        update();
+      })();
     </script>
     {% endif %}
 
     <form method="POST">
       {% csrf_token %}
       <div class="form-group">
-        <label class="form-label">Identificacion</label>
-        <div class="input-with-icon"><i data-lucide="id-card"></i><input type="text" name="identification" class="form-control" placeholder="Numero de identificacion" required autofocus></div>
+        <label class="form-label" for="identification">Identificación</label>
+        <div class="input-with-icon">
+          <i data-lucide="id-card"></i>
+          <input
+            id="identification"
+            type="text"
+            name="identification"
+            class="form-control"
+            placeholder="Número de identificación"
+            inputmode="numeric"
+            autocomplete="username"
+            maxlength="30"
+            required
+            autofocus
+          >
+        </div>
       </div>
+
       <div class="form-group">
-        <label class="form-label">Contrasena</label>
-        <div class="input-with-icon"><i data-lucide="lock-keyhole"></i><input type="password" name="password" class="form-control" placeholder="Tu contrasena" required></div>
+        <label class="form-label" for="password">Contraseña</label>
+        <div class="input-with-icon">
+          <i data-lucide="lock-keyhole"></i>
+          <input
+            id="password"
+            type="password"
+            name="password"
+            class="form-control"
+            placeholder="Tu contraseña"
+            autocomplete="current-password"
+            required
+          >
+          <button class="password-toggle" type="button" id="passwordToggle" aria-label="Mostrar contraseña">
+            <i data-lucide="eye"></i>
+          </button>
+        </div>
       </div>
-      <button type="submit" class="btn btn-primary btn-lg" style="width:100%;margin-top:4px"><i data-lucide="log-in"></i> Entrar al sistema</button>
+
+      <button type="submit" class="btn btn-primary btn-lg" style="width:100%;margin-top:4px">
+        <i data-lucide="log-in"></i> Entrar al sistema
+      </button>
     </form>
+
     <div class="roles-info">
       <span class="role-chip" style="background:rgba(255,215,0,.16);color:#9a7400;">Jefe</span>
       <span class="role-chip" style="background:rgba(229,62,62,.12);color:#b91c1c;">Administrador</span>
@@ -97,6 +211,22 @@
     </div>
   </section>
 </div>
-<script>window.addEventListener('DOMContentLoaded',()=>{if(window.lucide)window.lucide.createIcons();});</script>
+
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  if (window.lucide) window.lucide.createIcons();
+
+  const password = document.getElementById('password');
+  const toggle = document.getElementById('passwordToggle');
+
+  toggle.addEventListener('click', () => {
+    const visible = password.type === 'text';
+    password.type = visible ? 'password' : 'text';
+    toggle.setAttribute('aria-label', visible ? 'Mostrar contraseña' : 'Ocultar contraseña');
+    toggle.innerHTML = `<i data-lucide="${visible ? 'eye' : 'eye-off'}"></i>`;
+    if (window.lucide) window.lucide.createIcons();
+  });
+});
+</script>
 </body>
 </html>

@@ -518,3 +518,53 @@ textarea.form-control { min-height: 92px; resize: vertical; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #c5cfdd; border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: #9aa8bb; }
+
+
+
+
+/* Identidad: Agroveterinaria Planeta Animal */
+:root {
+  --bg-base: #f4f8f2;
+  --bg-panel: #ffffff;
+  --bg-soft: #eef5ec;
+  --bg-hover: #e6f0e2;
+  --sidebar: #144115;
+  --sidebar-soft: #1b4d1f;
+  --border: #dce8d9;
+  --border-strong: #c3d6bf;
+  --accent: #39701b;
+  --accent-hover: #2c5714;
+  --accent-soft: #e3f0da;
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, rgba(57, 112, 27, .09), transparent 34rem),
+    linear-gradient(180deg, #f8fbf7 0%, var(--bg-base) 42%);
+}
+
+.sidebar {
+  background: linear-gradient(180deg, var(--sidebar) 0%, #0c2f0d 100%);
+  color: #dcebd8;
+}
+
+.logo-icon {
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, .75);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, .22);
+}
+
+.logo-icon img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.brand-subtitle { color: #b9d5b1; }
+.nav-section-label { color: #92b78a; }
+.nav-item { color: #c6dfc0; }
