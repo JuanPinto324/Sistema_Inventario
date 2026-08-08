@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load commerce_extras %}
+{% load static commerce_extras %}
 {% block title %}Comprobante {{ sale.invoice_number }} - Planeta Animal{% endblock %}
 {% block topbar_title %}Comprobante de venta{% endblock %}
 
@@ -141,21 +141,52 @@
 }
 
 @media print {
-  @page { size: 80mm auto; margin: 0; }
+  @page {
+    size: 80mm 120mm;
+    margin: 0;
+  }
 
-  .sidebar, .topbar, .ticket-actions { display: none !important; }
-  .main-content { margin-left: 0 !important; }
-  .page-body { padding: 0 !important; }
+  html, body {
+    width: 80mm !important;
+    min-height: 120mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  .sidebar, .topbar, .ticket-actions {
+    display: none !important;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+  }
+
+  .page-body {
+    padding: 0 !important;
+  }
+
   .ticket-document {
-    width: 72mm;
+    box-sizing: border-box;
+    width: 80mm;
+    min-height: 120mm;
     margin: 0;
     padding: 4mm;
     border: 0;
     border-radius: 0;
     box-shadow: none;
   }
-  .ticket-logo { display: none; }
-  .ticket-brand { display: block; padding-bottom: 3mm; text-align: center; }
+
+  .ticket-logo {
+    display: none;
+  }
+
+  .ticket-brand {
+    display: block;
+    padding-bottom: 3mm;
+    text-align: center;
+  }
+
   .ticket-brand h2 { font-size: 13px; }
   .ticket-brand p { font-size: 9px; }
   .ticket-title { padding: 3mm 0; }
@@ -168,6 +199,7 @@
   .ticket-info-card span { font-size: 10px; }
   .ticket-section-title { margin: 3mm 0 1mm; font-size: 10px; }
   .ticket-items th, .ticket-items td { padding: 1.5mm 1mm; font-size: 9px; }
+  .ticket-items tr { break-inside: avoid; }
   .ticket-total { margin-top: 3mm; padding: 2.5mm; }
   .ticket-total strong { font-size: 13px; }
   .ticket-footer { margin-top: 3mm; font-size: 9px; }
