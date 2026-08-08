@@ -1,8 +1,266 @@
 {% extends 'base.html' %}
 {% load commerce_extras %}
-{% block title %}Ticket {{ sale.invoice_number }} - Agroveterinaria Planeta Animal{% endblock %}
-{% block topbar_title %}Comprobante de Venta{% endblock %}
+{% block title %}Comprobante {{ sale.invoice_number }} - Planeta Animal{% endblock %}
+{% block topbar_title %}Comprobante de venta{% endblock %}
+
+{% block extra_head %}
+<style>
+.ticket-actions { margin-bottom: 22px; }
+
+.ticket-document {
+  width: min(100%, 780px);
+  margin: 0 auto;
+  padding: 34px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.ticket-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid var(--accent);
+}
+
+.ticket-logo {
+  width: 58px;
+  height: 58px;
+  overflow: hidden;
+  flex: 0 0 auto;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: #fff;
+}
+
+.ticket-logo img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.ticket-brand h2 { margin: 0; color: var(--sidebar); font-size: 1.22rem; }
+.ticket-brand p { margin: 3px 0 0; color: var(--text-secondary); font-size: .84rem; }
+
+.ticket-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 0 18px;
+}
+
+.ticket-title h1 { margin: 0; font-size: 1.42rem; }
+.ticket-title p { margin: 4px 0 0; color: var(--text-muted); }
+
+.ticket-number {
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  color: var(--accent-hover);
+  background: var(--accent-soft);
+  font-family: var(--font-mono);
+  font-size: .85rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.ticket-info {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.ticket-info-card {
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-soft);
+}
+
+.ticket-info-card strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text-muted);
+  font-size: .7rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.ticket-info-card span { color: var(--text-primary); font-size: .9rem; font-weight: 650; }
+
+.ticket-section-title {
+  margin: 0 0 10px;
+  color: var(--text-secondary);
+  font-size: .75rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.ticket-items { width: 100%; border-collapse: collapse; }
+.ticket-items th {
+  padding: 10px 8px;
+  color: var(--text-secondary);
+  background: var(--bg-soft);
+  font-size: .7rem;
+  text-align: left;
+}
+.ticket-items th:nth-child(n+2),
+.ticket-items td:nth-child(n+2) { text-align: right; }
+
+.ticket-items td {
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: .86rem;
+}
+
+.ticket-items td:first-child { color: var(--text-primary); font-weight: 650; }
+.ticket-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20px;
+  padding: 16px;
+  border-radius: var(--radius);
+  color: #fff;
+  background: var(--sidebar);
+}
+.ticket-total span { font-size: .85rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.ticket-total strong { font-family: var(--font-mono); font-size: 1.35rem; }
+
+.ticket-footer {
+  margin-top: 20px;
+  color: var(--text-muted);
+  font-size: .82rem;
+  text-align: center;
+}
+
+@media (max-width: 620px) {
+  .ticket-document { padding: 20px; }
+  .ticket-info { grid-template-columns: 1fr; }
+  .ticket-title { flex-direction: column; }
+}
+
+@media print {
+  @page { size: 80mm auto; margin: 0; }
+
+  .sidebar, .topbar, .ticket-actions { display: none !important; }
+  .main-content { margin-left: 0 !important; }
+  .page-body { padding: 0 !important; }
+  .ticket-document {
+    width: 72mm;
+    margin: 0;
+    padding: 4mm;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .ticket-logo { display: none; }
+  .ticket-brand { display: block; padding-bottom: 3mm; text-align: center; }
+  .ticket-brand h2 { font-size: 13px; }
+  .ticket-brand p { font-size: 9px; }
+  .ticket-title { padding: 3mm 0; }
+  .ticket-title h1 { font-size: 12px; }
+  .ticket-title p { font-size: 9px; }
+  .ticket-number { padding: 0; background: transparent; font-size: 10px; }
+  .ticket-info { grid-template-columns: 1fr; gap: 2mm; margin-bottom: 3mm; }
+  .ticket-info-card { padding: 0; border: 0; background: transparent; }
+  .ticket-info-card strong { display: inline; margin-right: 3px; font-size: 9px; }
+  .ticket-info-card span { font-size: 10px; }
+  .ticket-section-title { margin: 3mm 0 1mm; font-size: 10px; }
+  .ticket-items th, .ticket-items td { padding: 1.5mm 1mm; font-size: 9px; }
+  .ticket-total { margin-top: 3mm; padding: 2.5mm; }
+  .ticket-total strong { font-size: 13px; }
+  .ticket-footer { margin-top: 3mm; font-size: 9px; }
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="page-header"><div class="page-title"><span class="icon"><i data-lucide="receipt-text"></i></span><h1>Comprobante de Venta</h1></div><div class="flex-gap"><button onclick="window.print()" class="btn btn-primary"><i data-lucide="printer"></i> Imprimir</button><a href="{% url 'pos_index' %}" class="btn btn-outline"><i data-lucide="arrow-left"></i> Nueva Venta</a></div></div>
-<div class="ticket"><div class="ticket-header"><strong style="font-size:1.12rem">Agroveterinaria Planeta Animal</strong><br><span style="color:#666;font-size:.8rem">Sistema de Gestion Comercial</span></div><hr class="ticket-divider"><div class="ticket-row"><span>Factura:</span><strong>{{ sale.invoice_number }}</strong></div><div class="ticket-row"><span>Fecha:</span><span>{{ sale.created_at|col_time }}</span></div><div class="ticket-row"><span>Cajero:</span><span>{{ sale.cashier.full_name }}</span></div><hr class="ticket-divider"><div class="ticket-row"><span>Cliente:</span><strong>{{ sale.customer_name }}</strong></div><div class="ticket-row"><span>ID:</span><span>{{ sale.customer_id }}</span></div>{% if sale.customer_phone %}<div class="ticket-row"><span>Tel:</span><span>{{ sale.customer_phone }}</span></div>{% endif %}{% if sale.customer_email %}<div class="ticket-row"><span>Email:</span><span>{{ sale.customer_email }}</span></div>{% endif %}<hr class="ticket-divider"><div style="margin-bottom:8px;font-weight:800">ARTICULOS</div>{% for item in sale.items.all %}<div class="ticket-row"><span style="flex:1">{{ item.product.name }}</span></div><div class="ticket-row" style="color:#555;padding-left:10px"><span>{{ item.quantity }} x $ {{ item.unit_price|money }}</span><span>$ {{ item.subtotal|money }}</span></div>{% endfor %}<hr class="ticket-divider"><div class="ticket-row ticket-total"><span>TOTAL</span><strong>$ {{ sale.total|money }}</strong></div><hr class="ticket-divider"><p style="text-align:center;color:#888;font-size:.75rem;margin-top:8px">Gracias por su compra.</p></div>
+<div class="page-header ticket-actions">
+  <div class="page-title">
+    <span class="icon"><i data-lucide="receipt-text"></i></span>
+    <h1>Comprobante de venta</h1>
+  </div>
+  <div class="flex-gap">
+    <button onclick="window.print()" class="btn btn-primary">
+      <i data-lucide="printer"></i> Imprimir
+    </button>
+    <a href="{% url 'pos_index' %}" class="btn btn-outline">
+      <i data-lucide="arrow-left"></i> Nueva venta
+    </a>
+  </div>
+</div>
+
+<section class="ticket-document">
+  <header class="ticket-brand">
+    <div class="ticket-logo">
+      <img src="{% static 'img/logo.jpeg' %}" alt="Planeta Animal">
+    </div>
+    <div>
+      <h2>Agroveterinaria Planeta Animal</h2>
+      <p>Salud animal y cuidado agropecuario</p>
+    </div>
+  </header>
+
+  <div class="ticket-title">
+    <div>
+      <h1>Comprobante de venta</h1>
+      <p>{{ sale.created_at|col_time }}</p>
+    </div>
+    <span class="ticket-number">{{ sale.invoice_number }}</span>
+  </div>
+
+  <div class="ticket-info">
+    <div class="ticket-info-card">
+      <strong>Cliente</strong>
+      <span>{{ sale.customer_name }}</span>
+    </div>
+    <div class="ticket-info-card">
+      <strong>Identificación</strong>
+      <span>{{ sale.customer_id }}</span>
+    </div>
+    <div class="ticket-info-card">
+      <strong>Cajero</strong>
+      <span>{{ sale.cashier.full_name }}</span>
+    </div>
+    {% if sale.customer_phone %}
+    <div class="ticket-info-card">
+      <strong>Teléfono</strong>
+      <span>{{ sale.customer_phone }}</span>
+    </div>
+    {% endif %}
+  </div>
+
+  <h3 class="ticket-section-title">Productos</h3>
+  <table class="ticket-items">
+    <thead>
+      <tr>
+        <th>Producto</th>
+        <th>Cant.</th>
+        <th>Precio</th>
+        <th>Subtotal</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in sale.items.all %}
+      <tr>
+        <td>{{ item.product.name }}</td>
+        <td>{{ item.quantity }}</td>
+        <td>$ {{ item.unit_price|money }}</td>
+        <td>$ {{ item.subtotal|money }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="ticket-total">
+    <span>Total pagado</span>
+    <strong>$ {{ sale.total|money }}</strong>
+  </div>
+
+  <footer class="ticket-footer">
+    Gracias por confiar en Planeta Animal.<br>
+    Conserva este comprobante para cualquier consulta.
+  </footer>
+</section>
 {% endblock %}

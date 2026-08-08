@@ -1,19 +1,38 @@
-import threading
 import io
 import logging
-from django.core.mail import EmailMultiAlternatives
+import threading
+from html import escape
+
 from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import cm
 from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import cm
+from reportlab.platypus import (
+    HRFlowable,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
+
 from .models import User
 
 
 logger = logging.getLogger(__name__)
+
+BRAND_NAME = "Agroveterinaria Planeta Animal"
+BRAND_SUBTITLE = "Salud animal y cuidado agropecuario"
+BRAND_GREEN = "#144115"
+ACCENT_GREEN = "#39701B"
+
+
+def _money(value):
+    return f"$ {value:,.0f}".replace(",", ".")
 
 
 def _destinatarios_staff():
@@ -21,128 +40,236 @@ def _destinatarios_staff():
         User.objects.filter(
             is_active=True,
             role__in=[User.ROLE_JEFE, User.ROLE_ADMIN],
-        ).exclude(email="").values_list("email", flat=True)
+        )
+        .exclude(email="")
+        .values_list("email", flat=True)
     )
 
 
 def _generar_pdf_factura(sale):
-    """Genera el PDF de la factura y retorna los bytes."""
+    """Genera el comprobante de venta en PDF y retorna sus bytes."""
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
-        rightMargin=2*cm,
-        leftMargin=2*cm,
-        topMargin=2*cm,
-        bottomMargin=2*cm,
+        rightMargin=2 * cm,
+        leftMargin=2 * cm,
+        topMargin=1.7 * cm,
+        bottomMargin=1.7 * cm,
     )
 
     styles = getSampleStyleSheet()
-    estilo_center = ParagraphStyle('center', parent=styles['Normal'], alignment=TA_CENTER)
-    estilo_right = ParagraphStyle('right', parent=styles['Normal'], alignment=TA_RIGHT)
-    estilo_titulo = ParagraphStyle('titulo', parent=styles['Normal'], alignment=TA_CENTER, fontSize=16, fontName='Helvetica-Bold')
-    estilo_subtitulo = ParagraphStyle('subtitulo', parent=styles['Normal'], alignment=TA_CENTER, fontSize=9, textColor=colors.grey)
-    estilo_seccion = ParagraphStyle('seccion', parent=styles['Normal'], fontSize=9, fontName='Helvetica-Bold')
-    estilo_normal = ParagraphStyle('normal', parent=styles['Normal'], fontSize=9)
-    estilo_total = ParagraphStyle('total', parent=styles['Normal'], fontSize=13, fontName='Helvetica-Bold')
+    title_style = ParagraphStyle(
+        "brand_title",
+        parent=styles["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=18,
+        leading=22,
+        textColor=colors.HexColor(BRAND_GREEN),
+    )
+    subtitle_style = ParagraphStyle(
+        "brand_subtitle",
+        parent=styles["Normal"],
+        fontSize=9,
+        leading=12,
+        textColor=colors.HexColor("#526173"),
+    )
+    document_title_style = ParagraphStyle(
+        "document_title",
+        parent=styles["Normal"],
+        alignment=TA_RIGHT,
+        fontName="Helvetica-Bold",
+        fontSize=13,
+        textColor=colors.HexColor(BRAND_GREEN),
+    )
+    document_number_style = ParagraphStyle(
+        "document_number",
+        parent=styles["Normal"],
+        alignment=TA_RIGHT,
+        fontName="Helvetica-Bold",
+        fontSize=10,
+        textColor=colors.HexColor("#39701B"),
+    )
+    section_style = ParagraphStyle(
+        "section",
+        parent=styles["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=9,
+        leading=12,
+        textColor=colors.HexColor(BRAND_GREEN),
+        spaceAfter=5,
+    )
+    normal_style = ParagraphStyle(
+        "normal",
+        parent=styles["Normal"],
+        fontSize=9,
+        leading=13,
+        textColor=colors.HexColor("#1F2937"),
+    )
+    small_style = ParagraphStyle(
+        "small",
+        parent=styles["Normal"],
+        alignment=TA_CENTER,
+        fontSize=8,
+        leading=11,
+        textColor=colors.HexColor("#64748B"),
+    )
+    total_label_style = ParagraphStyle(
+        "total_label",
+        parent=styles["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=12,
+        textColor=colors.white,
+    )
+    total_value_style = ParagraphStyle(
+        "total_value",
+        parent=styles["Normal"],
+        alignment=TA_RIGHT,
+        fontName="Helvetica-Bold",
+        fontSize=15,
+        textColor=colors.white,
+    )
 
-    fecha = timezone.localtime(sale.created_at).strftime('%d/%m/%Y %H:%M')
-    elementos = []
+    items = list(sale.items.select_related("product").all())
+    fecha = timezone.localtime(sale.created_at).strftime("%d/%m/%Y %H:%M")
+    elements = []
 
-    # Encabezado
-    elementos.append(Paragraph("PyCommerceX", estilo_titulo))
-    elementos.append(Paragraph("Sistema de Gestión Comercial", estilo_subtitulo))
-    elementos.append(Spacer(1, 0.4*cm))
-    elementos.append(HRFlowable(width="100%", thickness=1, color=colors.lightgrey))
-    elementos.append(Spacer(1, 0.3*cm))
+    header = Table(
+        [[
+            [
+                Paragraph(BRAND_NAME, title_style),
+                Paragraph(BRAND_SUBTITLE, subtitle_style),
+            ],
+            [
+                Paragraph("COMPROBANTE DE VENTA", document_title_style),
+                Paragraph(escape(sale.invoice_number), document_number_style),
+            ],
+        ]],
+        colWidths=[10.5 * cm, 6.5 * cm],
+    )
+    header.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+            ]
+        )
+    )
+    elements.append(header)
+    elements.append(Spacer(1, 0.35 * cm))
+    elements.append(
+        HRFlowable(width="100%", thickness=2, color=colors.HexColor(ACCENT_GREEN))
+    )
+    elements.append(Spacer(1, 0.35 * cm))
 
-    # Info factura
-    info_factura = [
-        ["Factura:", sale.invoice_number],
-        ["Fecha:", fecha],
-        ["Cajero:", sale.cashier.full_name],
+    sale_info = [
+        [Paragraph("<b>Fecha</b>", normal_style), Paragraph(escape(fecha), normal_style)],
+        [Paragraph("<b>Cajero</b>", normal_style), Paragraph(escape(sale.cashier.full_name), normal_style)],
     ]
-    tabla_info = Table(info_factura, colWidths=[4*cm, 13*cm])
-    tabla_info.setStyle(TableStyle([
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-    ]))
-    elementos.append(tabla_info)
-    elementos.append(Spacer(1, 0.3*cm))
-    elementos.append(HRFlowable(width="100%", thickness=0.5, color=colors.lightgrey))
-    elementos.append(Spacer(1, 0.3*cm))
-
-    # Info cliente
-    info_cliente = [["Cliente:", sale.customer_name], ["ID:", sale.customer_id]]
+    customer_info = [
+        [Paragraph("<b>Cliente</b>", normal_style), Paragraph(escape(sale.customer_name), normal_style)],
+        [Paragraph("<b>Identificación</b>", normal_style), Paragraph(escape(sale.customer_id), normal_style)],
+    ]
     if sale.customer_phone:
-        info_cliente.append(["Tel:", sale.customer_phone])
+        customer_info.append(
+            [Paragraph("<b>Teléfono</b>", normal_style), Paragraph(escape(sale.customer_phone), normal_style)]
+        )
     if sale.customer_email:
-        info_cliente.append(["Email:", sale.customer_email])
-    tabla_cliente = Table(info_cliente, colWidths=[4*cm, 13*cm])
-    tabla_cliente.setStyle(TableStyle([
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-    ]))
-    elementos.append(tabla_cliente)
-    elementos.append(Spacer(1, 0.3*cm))
-    elementos.append(HRFlowable(width="100%", thickness=0.5, color=colors.lightgrey))
-    elementos.append(Spacer(1, 0.3*cm))
+        customer_info.append(
+            [Paragraph("<b>Correo</b>", normal_style), Paragraph(escape(sale.customer_email), normal_style)]
+        )
 
-    # Artículos
-    elementos.append(Paragraph("ARTÍCULOS", estilo_seccion))
-    elementos.append(Spacer(1, 0.2*cm))
+    info_table = Table(
+        [[
+            [Paragraph("DATOS DE LA VENTA", section_style), Table(sale_info, colWidths=[3 * cm, 5 * cm])],
+            [Paragraph("DATOS DEL CLIENTE", section_style), Table(customer_info, colWidths=[3 * cm, 5 * cm])],
+        ]],
+        colWidths=[8.4 * cm, 8.6 * cm],
+    )
+    info_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#EEF5EC")),
+                ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#DCE8D9")),
+                ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#DCE8D9")),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("PADDING", (0, 0), (-1, -1), 11),
+            ]
+        )
+    )
+    elements.append(info_table)
+    elements.append(Spacer(1, 0.45 * cm))
 
-    datos_items = [["Producto", "Cant.", "P. Unit.", "Subtotal"]]
-    for item in sale.items.all():
-        datos_items.append([
-            item.product.name,
-            str(item.quantity),
-            f"$ {item.unit_price:,}".replace(",", "."),
-            f"$ {item.subtotal:,}".replace(",", "."),
-        ])
+    elements.append(Paragraph("PRODUCTOS", section_style))
+    item_rows = [["Producto", "Cant.", "Precio unitario", "Subtotal"]]
+    for item in items:
+        item_rows.append(
+            [
+                Paragraph(escape(item.product.name), normal_style),
+                str(item.quantity),
+                _money(item.unit_price),
+                _money(item.subtotal),
+            ]
+        )
 
-    tabla_items = Table(datos_items, colWidths=[9*cm, 2*cm, 3*cm, 3*cm])
-    tabla_items.setStyle(TableStyle([
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f5f5f5')),
-        ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
-        ('ALIGN', (3, 0), (3, -1), 'RIGHT'),
-        ('GRID', (0, 0), (-1, -1), 0.3, colors.lightgrey),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-        ('TOPPADDING', (0, 0), (-1, -1), 5),
-    ]))
-    elementos.append(tabla_items)
-    elementos.append(Spacer(1, 0.4*cm))
-    elementos.append(HRFlowable(width="100%", thickness=1, color=colors.lightgrey))
-    elementos.append(Spacer(1, 0.3*cm))
+    items_table = Table(
+        item_rows,
+        colWidths=[8.3 * cm, 2 * cm, 3.3 * cm, 3.4 * cm],
+        repeatRows=1,
+    )
+    items_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(BRAND_GREEN)),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#DCE8D9")),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8FBF7")]),
+                ("TOPPADDING", (0, 0), (-1, -1), 8),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+            ]
+        )
+    )
+    elements.append(items_table)
+    elements.append(Spacer(1, 0.4 * cm))
 
-    # Total
-    total_str = f"$ {sale.total:,}".replace(",", ".")
-    tabla_total = Table([["TOTAL", total_str]], colWidths=[14*cm, 3*cm])
-    tabla_total.setStyle(TableStyle([
-        ('FONTSIZE', (0, 0), (-1, -1), 13),
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
-        ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
-    ]))
-    elementos.append(tabla_total)
-    elementos.append(Spacer(1, 0.5*cm))
-    elementos.append(HRFlowable(width="100%", thickness=0.5, color=colors.lightgrey))
-    elementos.append(Spacer(1, 0.3*cm))
-    elementos.append(Paragraph("Gracias por su compra.", estilo_center))
+    total_table = Table(
+        [[Paragraph("TOTAL PAGADO", total_label_style), Paragraph(_money(sale.total), total_value_style)]],
+        colWidths=[11.5 * cm, 5.5 * cm],
+    )
+    total_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(BRAND_GREEN)),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("PADDING", (0, 0), (-1, -1), 12),
+            ]
+        )
+    )
+    elements.append(total_table)
+    elements.append(Spacer(1, 0.55 * cm))
+    elements.append(
+        Paragraph(
+            "Gracias por confiar en Planeta Animal. Conserva este comprobante para cualquier consulta.",
+            small_style,
+        )
+    )
 
-    doc.build(elementos)
+    doc.build(elements)
     buffer.seek(0)
     return buffer.read()
 
 
 def _enviar_async(subject, html_content, text_content, recipient_list, pdf_bytes=None, pdf_filename=None):
-    """Envia el correo en un hilo separado para no bloquear la peticion."""
+    """Envía correo en un hilo para no bloquear la venta."""
     recipient_list = [email for email in recipient_list if email]
     if not recipient_list:
         logger.warning("Correo no enviado sin destinatarios: %s", subject)
@@ -151,166 +278,122 @@ def _enviar_async(subject, html_content, text_content, recipient_list, pdf_bytes
         logger.error("Correo no enviado sin DEFAULT_FROM_EMAIL configurado: %s", subject)
         return
 
-    def _send():
+    def send():
         try:
-            msg = EmailMultiAlternatives(
+            message = EmailMultiAlternatives(
                 subject=subject,
                 body=text_content,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 to=recipient_list,
             )
-            msg.attach_alternative(html_content, "text/html")
+            message.attach_alternative(html_content, "text/html")
             if pdf_bytes and pdf_filename:
-                msg.attach(pdf_filename, pdf_bytes, "application/pdf")
-            sent_count = msg.send(fail_silently=False)
-            logger.info("Correo enviado: %s destinatarios=%s enviados=%s", subject, recipient_list, sent_count)
+                message.attach(pdf_filename, pdf_bytes, "application/pdf")
+            message.send(fail_silently=False)
         except Exception:
-            logger.exception("Error enviando correo: %s destinatarios=%s", subject, recipient_list)
+            logger.exception("Error enviando correo: %s", subject)
 
-    threading.Thread(target=_send, daemon=True, name="email-sender").start()
+    threading.Thread(target=send, daemon=True, name="email-sender").start()
+
+
+def _email_shell(title, subtitle, accent, content):
+    return f"""<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f4f8f2;font-family:Arial,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 12px;background:#f4f8f2">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border:1px solid #dce8d9;border-radius:14px;overflow:hidden">
+        <tr>
+          <td style="padding:28px 32px;background:{accent};text-align:center">
+            <h1 style="margin:0;color:#ffffff;font-size:22px">{title}</h1>
+            <p style="margin:6px 0 0;color:#e3f0da;font-size:12px">{subtitle}</p>
+          </td>
+        </tr>
+        {content}
+        <tr>
+          <td style="padding:18px 32px;background:#f8fbf7;border-top:1px solid #dce8d9;text-align:center">
+            <p style="margin:0;color:#64748b;font-size:12px">Mensaje automático de {BRAND_NAME}.</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
 
 
 def enviar_confirmacion_compra(sale):
     if not sale.customer_email:
         return
 
-    fecha = timezone.localtime(sale.created_at).strftime('%d/%m/%Y %H:%M')
+    items = list(sale.items.select_related("product").all())
+    fecha = timezone.localtime(sale.created_at).strftime("%d/%m/%Y %H:%M")
 
-    items_html = "".join(f"""
-        <tr>
-            <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0">{item.product.name}</td>
-            <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;text-align:center">{item.quantity}</td>
-            <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;text-align:right">$ {item.unit_price:,}</td>
-            <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;text-align:right">$ {item.subtotal:,}</td>
-        </tr>
-    """ for item in sale.items.all())
-
-    items_texto = "\n".join(
-        f"  - {item.product.name} x{item.quantity} = $ {item.subtotal:,}"
-        for item in sale.items.all()
+    rows_html = "".join(
+        f"""<tr>
+          <td style="padding:10px 12px;border-bottom:1px solid #dce8d9;color:#1f2937">{escape(item.product.name)}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #dce8d9;text-align:center">{item.quantity}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #dce8d9;text-align:right">{_money(item.unit_price)}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #dce8d9;text-align:right;font-weight:bold">{_money(item.subtotal)}</td>
+        </tr>"""
+        for item in items
     )
 
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head><meta charset="UTF-8"></head>
-    <body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:30px 0">
-            <tr><td align="center">
-                <table width="580" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+    content = f"""
+<tr><td style="padding:28px 32px 8px">
+  <h2 style="margin:0;color:#144115;font-size:19px">Gracias por tu compra, {escape(sale.customer_name)}.</h2>
+  <p style="margin:8px 0 0;color:#526173;font-size:14px;line-height:1.5">Adjuntamos tu comprobante de venta en PDF.</p>
+</td></tr>
+<tr><td style="padding:16px 32px">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#eef5ec;border-left:4px solid #39701b">
+    <tr><td style="padding:14px 16px;color:#526173;font-size:13px">Comprobante</td><td style="padding:14px 16px;text-align:right;color:#144115;font-size:13px;font-weight:bold">{escape(sale.invoice_number)}</td></tr>
+    <tr><td style="padding:0 16px 14px;color:#526173;font-size:13px">Fecha</td><td style="padding:0 16px 14px;text-align:right;color:#1f2937;font-size:13px">{escape(fecha)}</td></tr>
+  </table>
+</td></tr>
+<tr><td style="padding:4px 32px 0">
+  <h3 style="margin:0 0 10px;color:#144115;font-size:13px;letter-spacing:.04em">PRODUCTOS</h3>
+  <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #dce8d9">
+    <tr style="background:#144115">
+      <th style="padding:10px 12px;color:#ffffff;font-size:12px;text-align:left">Producto</th>
+      <th style="padding:10px 12px;color:#ffffff;font-size:12px;text-align:center">Cant.</th>
+      <th style="padding:10px 12px;color:#ffffff;font-size:12px;text-align:right">Precio</th>
+      <th style="padding:10px 12px;color:#ffffff;font-size:12px;text-align:right">Subtotal</th>
+    </tr>
+    {rows_html}
+  </table>
+</td></tr>
+<tr><td style="padding:20px 32px 28px">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#144115">
+    <tr><td style="padding:15px 16px;color:#ffffff;font-size:14px;font-weight:bold">TOTAL PAGADO</td><td style="padding:15px 16px;color:#ffffff;font-size:21px;font-weight:bold;text-align:right">{_money(sale.total)}</td></tr>
+  </table>
+</td></tr>"""
 
-                    <!-- Header -->
-                    <tr>
-                        <td style="background:#1a1a2e;padding:30px;text-align:center">
-                            <h1 style='margin:0 0 8px 0;color:#ffffff;font-size:24px;letter-spacing:1px'>PyCommerceX</h1>
-                            <p style='margin:0;color:#aaaacc;font-size:12px'>Sistema de Gestion Comercial</p>
-                        </td>
-                    </tr>
+    html_content = _email_shell(BRAND_NAME, "Confirmación de compra", BRAND_GREEN, content)
+    items_text = "\n".join(
+        f"- {item.product.name} x{item.quantity}: {_money(item.subtotal)}"
+        for item in items
+    )
+    text_content = f"""Gracias por tu compra, {sale.customer_name}.
 
-                    <!-- Saludo -->
-                    <tr>
-                        <td style="padding:28px 30px 0">
-                            <h2 style="margin:0;color:#1a1a2e;font-size:18px">¡Gracias por tu compra, {sale.customer_name}!</h2>
-                            <p style="color:#666;font-size:14px;margin:8px 0 0">Tu compra ha sido registrada exitosamente. Encuentra el comprobante adjunto a este correo.</p>
-                        </td>
-                    </tr>
-
-                    <!-- Info factura -->
-                    <tr>
-                        <td style="padding:20px 30px">
-                            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f9ff;border-radius:6px;border-left:4px solid #1a1a2e">
-                                <tr>
-                                    <td style="padding:16px 20px">
-                                        <table width="100%">
-                                            <tr>
-                                                <td style="color:#666;font-size:13px;padding:3px 0">Factura</td>
-                                                <td style="color:#1a1a2e;font-size:13px;font-weight:bold;text-align:right">{sale.invoice_number}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="color:#666;font-size:13px;padding:3px 0">Fecha</td>
-                                                <td style="color:#1a1a2e;font-size:13px;text-align:right">{fecha}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="color:#666;font-size:13px;padding:3px 0">Cajero</td>
-                                                <td style="color:#1a1a2e;font-size:13px;text-align:right">{sale.cashier.full_name}</td>
-                                            </tr>
-                                        </table>
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-
-                    <!-- Tabla artículos -->
-                    <tr>
-                        <td style="padding:0 30px">
-                            <p style="font-weight:bold;color:#1a1a2e;font-size:13px;margin:0 0 8px">ARTÍCULOS</p>
-                            <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #f0f0f0;border-radius:6px;overflow:hidden">
-                                <tr style="background:#1a1a2e">
-                                    <th style="padding:10px 12px;color:#fff;font-size:12px;text-align:left">Producto</th>
-                                    <th style="padding:10px 12px;color:#fff;font-size:12px;text-align:center">Cant.</th>
-                                    <th style="padding:10px 12px;color:#fff;font-size:12px;text-align:right">P. Unit.</th>
-                                    <th style="padding:10px 12px;color:#fff;font-size:12px;text-align:right">Subtotal</th>
-                                </tr>
-                                {items_html}
-                            </table>
-                        </td>
-                    </tr>
-
-                    <!-- Total -->
-                    <tr>
-                        <td style="padding:16px 30px">
-                            <table width="100%" cellpadding="0" cellspacing="0">
-                                <tr>
-                                    <td style="font-size:16px;font-weight:bold;color:#1a1a2e">TOTAL</td>
-                                    <td style="font-size:20px;font-weight:bold;color:#1a1a2e;text-align:right">$ {sale.total:,}</td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-
-                    <!-- Footer -->
-                    <tr>
-                        <td style="background:#f8f8f8;padding:20px 30px;text-align:center;border-top:1px solid #f0f0f0">
-                            <p style="margin:0;color:#999;font-size:12px">Este correo fue generado automáticamente por PyCommerceX.</p>
-                            <p style="margin:4px 0 0;color:#999;font-size:12px">Por favor no respondas este mensaje.</p>
-                        </td>
-                    </tr>
-
-                </table>
-            </td></tr>
-        </table>
-    </body>
-    </html>
-    """
-
-    texto = f"""
-Hola {sale.customer_name},
-
-Tu compra ha sido registrada exitosamente.
-
-Factura: {sale.invoice_number}
+Comprobante: {sale.invoice_number}
 Fecha: {fecha}
-Cajero: {sale.cashier.full_name}
 
 Productos:
-{items_texto}
+{items_text}
 
-Total: $ {sale.total:,}
+Total pagado: {_money(sale.total)}
 
-Gracias por tu compra.
-PyCommerceX
-    """.strip()
-
-    pdf_bytes = _generar_pdf_factura(sale)
+{BRAND_NAME}
+{BRAND_SUBTITLE}"""
 
     _enviar_async(
-        subject=f"Confirmación de compra - {sale.invoice_number}",
-        html_content=html,
-        text_content=texto,
+        subject=f"Confirmación de compra {sale.invoice_number} - Planeta Animal",
+        html_content=html_content,
+        text_content=text_content,
         recipient_list=[sale.customer_email],
-        pdf_bytes=pdf_bytes,
-        pdf_filename=f"Factura_{sale.invoice_number}.pdf",
+        pdf_bytes=_generar_pdf_factura(sale),
+        pdf_filename=f"Comprobante_{sale.invoice_number}.pdf",
     )
 
 
@@ -319,77 +402,29 @@ def enviar_alerta_stock_bajo(product):
     if not destinatarios:
         return
 
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head><meta charset="UTF-8"></head>
-    <body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:30px 0">
-            <tr><td align="center">
-                <table width="580" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
-                    <tr>
-                        <td style="background:#f59e0b;padding:24px 30px;text-align:center">
-                            <h1 style="margin:0;color:#fff;font-size:20px">⚠️ Alerta de Stock Bajo</h1>
-                            <p style="margin:4px 0 0;color:#fff3cd;font-size:12px">PyCommerceX — Sistema de Gestión Comercial</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="padding:28px 30px">
-                            <p style="color:#333;font-size:14px;margin:0 0 20px">El siguiente producto ha alcanzado su stock mínimo:</p>
-                            <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border-radius:6px;border-left:4px solid #f59e0b">
-                                <tr>
-                                    <td style="padding:16px 20px">
-                                        <table width="100%">
-                                            <tr>
-                                                <td style="color:#666;font-size:13px;padding:3px 0">Producto</td>
-                                                <td style="color:#1a1a2e;font-size:13px;font-weight:bold;text-align:right">{product.name}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="color:#666;font-size:13px;padding:3px 0">Código</td>
-                                                <td style="color:#1a1a2e;font-size:13px;text-align:right">{product.code}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="color:#666;font-size:13px;padding:3px 0">Stock actual</td>
-                                                <td style="color:#d97706;font-size:13px;font-weight:bold;text-align:right">{product.stock} unidades</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="color:#666;font-size:13px;padding:3px 0">Stock mínimo</td>
-                                                <td style="color:#1a1a2e;font-size:13px;text-align:right">{product.min_stock} unidades</td>
-                                            </tr>
-                                        </table>
-                                    </td>
-                                </tr>
-                            </table>
-                            <p style="color:#666;font-size:13px;margin:20px 0 0">Se recomienda reabastecer este producto a la brevedad posible.</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="background:#f8f8f8;padding:16px 30px;text-align:center;border-top:1px solid #f0f0f0">
-                            <p style="margin:0;color:#999;font-size:12px">PyCommerceX — Notificación automática del sistema.</p>
-                        </td>
-                    </tr>
-                </table>
-            </td></tr>
-        </table>
-    </body>
-    </html>
-    """
+    content = f"""
+<tr><td style="padding:28px 32px">
+  <p style="margin:0 0 18px;color:#334155;font-size:14px;line-height:1.5">Este producto alcanzó el stock mínimo configurado. Programa su reposición.</p>
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border-left:4px solid #b7791f">
+    <tr><td style="padding:14px 16px;color:#64748b;font-size:13px">Producto</td><td style="padding:14px 16px;text-align:right;color:#1f2937;font-weight:bold;font-size:13px">{escape(product.name)}</td></tr>
+    <tr><td style="padding:0 16px 14px;color:#64748b;font-size:13px">Código</td><td style="padding:0 16px 14px;text-align:right;color:#1f2937;font-size:13px">{escape(product.code)}</td></tr>
+    <tr><td style="padding:0 16px 14px;color:#64748b;font-size:13px">Stock actual</td><td style="padding:0 16px 14px;text-align:right;color:#b7791f;font-weight:bold;font-size:13px">{product.stock} unidades</td></tr>
+    <tr><td style="padding:0 16px 14px;color:#64748b;font-size:13px">Stock mínimo</td><td style="padding:0 16px 14px;text-align:right;color:#1f2937;font-size:13px">{product.min_stock} unidades</td></tr>
+  </table>
+</td></tr>"""
 
-    texto = f"""
-Alerta de Stock Bajo — PyCommerceX
+    _enviar_async(
+        subject=f"Stock bajo: {product.name} - Planeta Animal",
+        html_content=_email_shell(BRAND_NAME, "Alerta de stock bajo", "#B7791F", content),
+        text_content=f"""Alerta de stock bajo
 
 Producto: {product.name}
 Código: {product.code}
 Stock actual: {product.stock} unidades
 Stock mínimo: {product.min_stock} unidades
 
-Se recomienda reabastecer este producto pronto.
-    """.strip()
-
-    _enviar_async(
-        subject=f"⚠️ Stock bajo - {product.name}",
-        html_content=html,
-        text_content=texto,
+Programa su reposición.
+{BRAND_NAME}""",
         recipient_list=destinatarios,
     )
 
@@ -399,66 +434,22 @@ def enviar_alerta_stock_agotado(product):
     if not destinatarios:
         return
 
-    fecha = timezone.localtime(timezone.now()).strftime('%d/%m/%Y %H:%M')
+    fecha = timezone.localtime(timezone.now()).strftime("%d/%m/%Y %H:%M")
+    content = f"""
+<tr><td style="padding:28px 32px">
+  <p style="margin:0 0 18px;color:#334155;font-size:14px;line-height:1.5">Este producto se agotó. Reabastécelo para evitar perder ventas.</p>
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#fef2f2;border-left:4px solid #dc2626">
+    <tr><td style="padding:14px 16px;color:#64748b;font-size:13px">Producto</td><td style="padding:14px 16px;text-align:right;color:#1f2937;font-weight:bold;font-size:13px">{escape(product.name)}</td></tr>
+    <tr><td style="padding:0 16px 14px;color:#64748b;font-size:13px">Código</td><td style="padding:0 16px 14px;text-align:right;color:#1f2937;font-size:13px">{escape(product.code)}</td></tr>
+    <tr><td style="padding:0 16px 14px;color:#64748b;font-size:13px">Stock actual</td><td style="padding:0 16px 14px;text-align:right;color:#dc2626;font-weight:bold;font-size:13px">0 unidades</td></tr>
+    <tr><td style="padding:0 16px 14px;color:#64748b;font-size:13px">Fecha</td><td style="padding:0 16px 14px;text-align:right;color:#1f2937;font-size:13px">{escape(fecha)}</td></tr>
+  </table>
+</td></tr>"""
 
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head><meta charset="UTF-8"></head>
-    <body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:30px 0">
-            <tr><td align="center">
-                <table width="580" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
-                    <tr>
-                        <td style="background:#dc2626;padding:24px 30px;text-align:center">
-                            <h1 style="margin:0;color:#fff;font-size:20px">🚨 Producto Agotado</h1>
-                            <p style="margin:4px 0 0;color:#fecaca;font-size:12px">PyCommerceX — Sistema de Gestión Comercial</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="padding:28px 30px">
-                            <p style="color:#333;font-size:14px;margin:0 0 20px">El siguiente producto se ha agotado completamente:</p>
-                            <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff5f5;border-radius:6px;border-left:4px solid #dc2626">
-                                <tr>
-                                    <td style="padding:16px 20px">
-                                        <table width="100%">
-                                            <tr>
-                                                <td style="color:#666;font-size:13px;padding:3px 0">Producto</td>
-                                                <td style="color:#1a1a2e;font-size:13px;font-weight:bold;text-align:right">{product.name}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="color:#666;font-size:13px;padding:3px 0">Código</td>
-                                                <td style="color:#1a1a2e;font-size:13px;text-align:right">{product.code}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="color:#666;font-size:13px;padding:3px 0">Stock actual</td>
-                                                <td style="color:#dc2626;font-size:13px;font-weight:bold;text-align:right">0 unidades</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="color:#666;font-size:13px;padding:3px 0">Fecha</td>
-                                                <td style="color:#1a1a2e;font-size:13px;text-align:right">{fecha}</td>
-                                            </tr>
-                                        </table>
-                                    </td>
-                                </tr>
-                            </table>
-                            <p style="color:#666;font-size:13px;margin:20px 0 0">Se requiere reposición urgente para evitar pérdida de ventas.</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="background:#f8f8f8;padding:16px 30px;text-align:center;border-top:1px solid #f0f0f0">
-                            <p style="margin:0;color:#999;font-size:12px">PyCommerceX — Notificación automática del sistema.</p>
-                        </td>
-                    </tr>
-                </table>
-            </td></tr>
-        </table>
-    </body>
-    </html>
-    """
-
-    texto = f"""
-Producto Agotado — PyCommerceX
+    _enviar_async(
+        subject=f"Producto agotado: {product.name} - Planeta Animal",
+        html_content=_email_shell(BRAND_NAME, "Alerta de producto agotado", "#DC2626", content),
+        text_content=f"""Producto agotado
 
 Producto: {product.name}
 Código: {product.code}
@@ -466,11 +457,6 @@ Stock actual: 0 unidades
 Fecha: {fecha}
 
 Se requiere reposición urgente.
-    """.strip()
-
-    _enviar_async(
-        subject=f"🚨 Producto agotado - {product.name}",
-        html_content=html,
-        text_content=texto,
+{BRAND_NAME}""",
         recipient_list=destinatarios,
     )
