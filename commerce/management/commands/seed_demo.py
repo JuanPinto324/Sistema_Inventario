@@ -1,50 +1,67 @@
-from django.core.management.base import BaseCommand
+import os
+
+from django.core.management.base import BaseCommand, CommandError
 
 from commerce.models import Product, User
 
 
 class Command(BaseCommand):
-    help = "Crea el usuario inicial y algunos productos de ejemplo."
+    help = "Crea el usuario jefe inicial. Los productos de demostración son opcionales."
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--with-demo-products",
+            action="store_true",
+            help="Crea productos ficticios para desarrollo local.",
+        )
 
     def handle(self, *args, **options):
+        identification = os.environ.get("SEED_ADMIN_IDENTIFICATION")
+        password = os.environ.get("SEED_ADMIN_PASSWORD")
+        full_name = os.environ.get("SEED_ADMIN_FULL_NAME")
+        email = os.environ.get("SEED_ADMIN_EMAIL")
+
+        if not all([identification, password, full_name, email]):
+            raise CommandError(
+                "Faltan variables: SEED_ADMIN_IDENTIFICATION, "
+                "SEED_ADMIN_PASSWORD, SEED_ADMIN_FULL_NAME y SEED_ADMIN_EMAIL."
+            )
+
         user, created = User.objects.get_or_create(
-            identification="0000000000",
+            identification=identification,
             defaults={
-                "username": "0000000000",
-                "full_name": "Juan Andres Pinto",
-                "email": "juanpinto0206x@gmail.com",
+                "username": identification,
+                "full_name": full_name,
+                "email": email,
                 "role": User.ROLE_JEFE,
                 "is_staff": True,
                 "is_superuser": True,
             },
         )
+
         if created:
-            user.set_password("admin123")
+            user.set_password(password)
             user.save()
-            self.stdout.write(self.style.SUCCESS("Usuario jefe creado: 0000000000 / admin123"))
+            self.stdout.write(
+                self.style.SUCCESS(f"Usuario jefe creado: {identification}")
+            )
         else:
-            user.full_name = "Juan Andres Pinto"
-            user.email = "juanpinto0206x@gmail.com"
-            user.is_staff = True
-            user.is_superuser = True
-            user.save(update_fields=["full_name", "email", "is_staff", "is_superuser"])
             self.stdout.write("El usuario jefe ya existe.")
 
-        products = [
-            ("PROD-001", "Arroz Diana 500g", 2200, 3200, 24, 5),
-            ("PROD-002", "Aceite vegetal 1L", 7800, 9800, 12, 4),
-            ("PROD-003", "Cafe molido 250g", 6500, 8500, 8, 3),
-            ("PROD-004", "Azucar blanca 1kg", 3600, 4800, 2, 5),
-        ]
-        for code, name, cost, sell, stock, min_stock in products:
-            Product.objects.get_or_create(
-                code=code,
-                defaults={
-                    "name": name,
-                    "cost_price": cost,
-                    "sell_price": sell,
-                    "stock": stock,
-                    "min_stock": min_stock,
-                },
-            )
-        self.stdout.write(self.style.SUCCESS("Datos de demostracion listos."))
+        if options["with_demo_products"]:
+            products = [
+                ("PROD-001", "Producto de ejemplo 1", 1000, 1500, 10, 2),
+                ("PROD-002", "Producto de ejemplo 2", 2000, 3000, 5, 1),
+            ]
+            for code, name, cost, sell, stock, min_stock in products:
+                Product.objects.get_or_create(
+                    code=code,
+                    defaults={
+                        "name": name,
+                        "cost_price": cost,
+                        "sell_price": sell,
+                        "stock": stock,
+                        "min_stock": min_stock,
+                    },
+                )
+            self.stdout.write(self.style.SUCCESS("Productos de demostración creados."))

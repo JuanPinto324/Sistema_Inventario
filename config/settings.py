@@ -4,8 +4,14 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get("SECRET_KEY", "pycommercex-local-dev-key")
 DEBUG = os.environ.get("DEBUG", "True").lower() in ("1", "true", "yes", "on")
+
+SECRET_KEY = os.environ.get("SECRET_KEY")
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = "django-insecure-development-only"
+    else:
+        raise RuntimeError("SECRET_KEY es obligatoria cuando DEBUG=False.")
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
