@@ -2,14 +2,77 @@
 {% block title %}{{ action }} Producto - Agroveterinaria Planeta Animal{% endblock %}
 {% block topbar_title %}{{ action }} Producto{% endblock %}
 {% block content %}
-<div class="page-header"><div class="page-title"><span class="icon"><i data-lucide="{% if action == 'Nuevo' %}package-plus{% else %}pencil{% endif %}"></i></span><h1>{{ action }} Producto</h1></div><a href="{% url 'inventory_index' %}" class="btn btn-outline"><i data-lucide="arrow-left"></i> Volver</a></div>
+<div class="page-header">
+  <div class="page-title">
+    <span class="icon"><i data-lucide="{% if action == 'Nuevo' %}package-plus{% else %}pencil{% endif %}"></i></span>
+    <h1>{{ action }} Producto</h1>
+  </div>
+  <a href="{% url 'inventory_index' %}" class="btn btn-outline"><i data-lucide="arrow-left"></i> Volver</a>
+</div>
+
 <div class="card" style="max-width:640px">
-  <form method="POST">{% csrf_token %}
-    <div class="form-group"><label class="form-label">Codigo unico *</label><input type="text" name="code" class="form-control" required value="{{ form.code.value|default:'' }}" {% if product %}readonly{% endif %} style="font-family:var(--font-mono)"></div>
-    <div class="form-group"><label class="form-label">Nombre del Producto *</label><input type="text" name="name" class="form-control" required value="{{ form.name.value|default:'' }}" placeholder="Nombre del producto"></div>
-    <div class="form-grid-2"><div class="form-group"><label class="form-label">Precio de Costo *</label><input type="number" name="cost_price" class="form-control" min="0" required value="{{ form.cost_price.value|default:'0' }}"></div><div class="form-group"><label class="form-label">Precio de Venta *</label><input type="number" name="sell_price" class="form-control" min="0" required value="{{ form.sell_price.value|default:'0' }}"></div></div>
-    <div class="form-grid-2"><div class="form-group"><label class="form-label">Stock Actual *</label><input type="number" name="stock" class="form-control" min="0" required value="{{ form.stock.value|default:'0' }}"></div><div class="form-group"><label class="form-label">Stock Minimo *</label><input type="number" name="min_stock" class="form-control" min="0" required value="{{ form.min_stock.value|default:'5' }}"></div></div>
-    <div class="flex-gap mt-2"><button type="submit" class="btn btn-primary"><i data-lucide="{% if action == 'Nuevo' %}package-plus{% else %}save{% endif %}"></i>{% if action == 'Nuevo' %}Registrar Producto{% else %}Guardar Cambios{% endif %}</button><a href="{% url 'inventory_index' %}" class="btn btn-outline">Cancelar</a></div>
+  <form method="POST">
+    {% csrf_token %}
+
+    {% if form.errors %}
+    <div class="alert alert-error">
+      <strong>Revisa los datos ingresados.</strong>
+      <ul style="margin:6px 0 0 18px">
+        {% for errors in form.errors.values %}
+          {% for error in errors %}<li>{{ error }}</li>{% endfor %}
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <div class="form-group">
+      <label class="form-label" for="code">Código único *</label>
+      <input id="code" type="text" name="code" class="form-control" required
+        maxlength="50" pattern="[A-Za-z0-9._/-]{1,50}" autocomplete="off"
+        value="{{ form.code.value|default:'' }}" {% if product %}readonly{% endif %}
+        style="font-family:var(--font-mono)" placeholder="Ej.: VET-001">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="name">Nombre del producto *</label>
+      <input id="name" type="text" name="name" class="form-control" required
+        maxlength="120" value="{{ form.name.value|default:'' }}"
+        placeholder="Ej.: Ivermectina 1%">
+    </div>
+
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label" for="cost_price">Precio de costo *</label>
+        <input id="cost_price" type="number" name="cost_price" class="form-control" min="0" step="1"
+          inputmode="numeric" required value="{{ form.cost_price.value|default:'0' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="sell_price">Precio de venta *</label>
+        <input id="sell_price" type="number" name="sell_price" class="form-control" min="0" step="1"
+          inputmode="numeric" required value="{{ form.sell_price.value|default:'0' }}">
+      </div>
+    </div>
+
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label" for="stock">Stock actual *</label>
+        <input id="stock" type="number" name="stock" class="form-control" min="0" step="1"
+          inputmode="numeric" required value="{{ form.stock.value|default:'0' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="min_stock">Stock mínimo *</label>
+        <input id="min_stock" type="number" name="min_stock" class="form-control" min="0" step="1"
+          inputmode="numeric" required value="{{ form.min_stock.value|default:'5' }}">
+      </div>
+    </div>
+
+    <div class="flex-gap mt-2">
+      <button type="submit" class="btn btn-primary">
+        <i data-lucide="{% if action == 'Nuevo' %}package-plus{% else %}save{% endif %}"></i>
+        {% if action == 'Nuevo' %}Registrar producto{% else %}Guardar cambios{% endif %}
+      </button>
+      <a href="{% url 'inventory_index' %}" class="btn btn-outline">Cancelar</a>
+    </div>
   </form>
 </div>
 {% endblock %}
