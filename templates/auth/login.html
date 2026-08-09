@@ -4,6 +4,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#144115">
+  <link rel="manifest" href="{% static 'manifest.webmanifest' %}">
+  <link rel="icon" type="image/png" href="{% static 'img/icon-192.png' %}">
+  <link rel="apple-touch-icon" href="{% static 'img/icon-192.png' %}">
   <title>Planeta Animal - Iniciar sesión</title>
   <link rel="stylesheet" href="{% static 'css/main.css' %}">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
@@ -227,6 +231,13 @@ window.addEventListener('DOMContentLoaded', () => {
     if (window.lucide) window.lucide.createIcons();
   });
 });
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("{% url 'service_worker' %}", { scope: "/" });
+  });
+}
 </script>
 </body>
 </html>

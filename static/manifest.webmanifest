@@ -1,0 +1,23 @@
+{
+  "id": "/",
+  "name": "Agroveterinaria Planeta Animal",
+  "short_name": "Planeta Animal",
+  "description": "Sistema de inventario, ventas y caja.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f8f1",
+  "theme_color": "#144115",
+  "icons": [
+    {
+      "src": "/static/img/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/img/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

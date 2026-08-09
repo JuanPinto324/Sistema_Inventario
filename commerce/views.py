@@ -16,6 +16,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
+from django.contrib.staticfiles.storage import staticfiles_storage
+from django.http import FileResponse, JsonResponse
 
 from .forms import LoginForm, ProductForm, UserForm
 from .models import Product, Return, Sale, SaleItem, User, ActivityLog
@@ -749,4 +751,13 @@ def reportes_index(request):
             "loss_count": loss_count,
         },
     })
+
+def service_worker(request):
+    response = FileResponse(
+        staticfiles_storage.open("js/service-worker.js", "rb"),
+        content_type="application/javascript",
+    )
+    response["Cache-Control"] = "no-cache"
+    response["Service-Worker-Allowed"] = "/"
+    return response
     

@@ -32,4 +32,5 @@ urlpatterns = [
     path("reportes/rentabilidad/pdf/", views.reporte_rentabilidad_pdf, name="reporte_rentabilidad_pdf"),
     path("reportes/rentabilidad/excel/", views.reporte_rentabilidad_excel, name="reporte_rentabilidad_excel"),
     path("reportes/", views.reportes_index, name="reportes_index"),
+    path("service-worker.js", views.service_worker, name="service_worker"),
 ]
