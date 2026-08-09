@@ -146,63 +146,96 @@
     margin: 0;
   }
 
-  html, body {
+  html,
+  body {
     width: 80mm !important;
-    min-height: 120mm !important;
+    min-width: 80mm !important;
+    min-height: 0 !important;
+    height: auto !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #fff !important;
   }
 
-  .sidebar, .topbar, .ticket-actions {
-    display: none !important;
-  }
-
-  .main-content {
-    margin-left: 0 !important;
-  }
-
+  .wrapper,
+  .main-content,
   .page-body {
+    display: block !important;
+    width: 80mm !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    margin: 0 !important;
     padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  .sidebar,
+  .topbar,
+  .ticket-actions {
+    display: none !important;
   }
 
   .ticket-document {
     box-sizing: border-box;
-    width: 80mm;
-    min-height: 120mm;
-    margin: 0;
-    padding: 4mm;
-    border: 0;
-    border-radius: 0;
-    box-shadow: none;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 4mm !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
   }
 
   .ticket-logo {
-    display: none;
+    display: none !important;
   }
 
   .ticket-brand {
-    display: block;
-    padding-bottom: 3mm;
-    text-align: center;
+    display: block !important;
+    padding-bottom: 3mm !important;
+    text-align: center !important;
   }
 
-  .ticket-brand h2 { font-size: 13px; }
-  .ticket-brand p { font-size: 9px; }
-  .ticket-title { padding: 3mm 0; }
-  .ticket-title h1 { font-size: 12px; }
-  .ticket-title p { font-size: 9px; }
-  .ticket-number { padding: 0; background: transparent; font-size: 10px; }
-  .ticket-info { grid-template-columns: 1fr; gap: 2mm; margin-bottom: 3mm; }
-  .ticket-info-card { padding: 0; border: 0; background: transparent; }
-  .ticket-info-card strong { display: inline; margin-right: 3px; font-size: 9px; }
-  .ticket-info-card span { font-size: 10px; }
-  .ticket-section-title { margin: 3mm 0 1mm; font-size: 10px; }
-  .ticket-items th, .ticket-items td { padding: 1.5mm 1mm; font-size: 9px; }
-  .ticket-items tr { break-inside: avoid; }
-  .ticket-total { margin-top: 3mm; padding: 2.5mm; }
-  .ticket-total strong { font-size: 13px; }
-  .ticket-footer { margin-top: 3mm; font-size: 9px; }
+  .ticket-brand h2 { font-size: 13px !important; }
+  .ticket-brand p { font-size: 9px !important; }
+  .ticket-title { padding: 3mm 0 !important; }
+  .ticket-title h1 { font-size: 12px !important; }
+  .ticket-title p { font-size: 9px !important; }
+  .ticket-number { padding: 0 !important; background: transparent !important; font-size: 10px !important; }
+
+  .ticket-info {
+    grid-template-columns: 1fr !important;
+    gap: 2mm !important;
+    margin-bottom: 3mm !important;
+  }
+
+  .ticket-info-card {
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+  }
+
+  .ticket-info-card strong {
+    display: inline !important;
+    margin-right: 3px !important;
+    font-size: 9px !important;
+  }
+
+  .ticket-info-card span { font-size: 10px !important; }
+  .ticket-section-title { margin: 3mm 0 1mm !important; font-size: 10px !important; }
+  .ticket-items th,
+  .ticket-items td { padding: 1.5mm 1mm !important; font-size: 9px !important; }
+
+  .ticket-total {
+    margin-top: 3mm !important;
+    padding: 2.5mm !important;
+  }
+
+  .ticket-total strong { font-size: 13px !important; }
+  .ticket-footer { margin-top: 3mm !important; font-size: 9px !important; }
 }
 </style>
 {% endblock %}
