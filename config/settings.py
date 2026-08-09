@@ -110,3 +110,8 @@ EMAIL_BACKEND = os.environ.get(
     "sendgrid_backend.SendgridBackend" if SENDGRID_API_KEY else "django.core.mail.backends.console.EmailBackend",
 )
 EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "15"))
+
+SENDGRID_SANDBOX_MODE_IN_DEBUG = (
+    os.environ.get("SENDGRID_SANDBOX_MODE_IN_DEBUG", "True").lower()
+    in ("1", "true", "yes", "on")
+)
